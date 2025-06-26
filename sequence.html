@@ -102,10 +102,12 @@
       successMessage: false,
       intervalMap: {},
       loadSequences() {
-        fetch('/api/sequences').then(r => r.json()).then(i => {
-          this.sequences = i;
-          this.checkPolling();
-        });
+        fetch('/api/sequences')
+          .then(r => r.json())
+          .then(i => {
+            this.sequences = i;
+            this.checkPolling();
+          });
       },
       select(seq) {
         if (seq.status !== 'completed') return;
@@ -136,17 +138,21 @@
             body: JSON.stringify({ name: this.form.name, url: this.form.url, count: this.form.count })
           }).then(() => { this.loadSequences(); this.closeModal(); });
         } else {
+          // Trigger the webhook (Apify + DB logic is handled in backend)
           fetch('https://n8n.sapidblue.in/webhook/jo-sequence-fetch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sequenceName: this.form.name, url: this.form.url, count: this.form.count })
           })
           .then(() => {
-            this.loadSequences();
             this.successMessage = true;
             setTimeout(() => {
               this.closeModal();
+              this.loadSequences();
             }, 1500);
+          })
+          .catch(() => {
+            alert('Failed to trigger sequence.');
           });
         }
       },
