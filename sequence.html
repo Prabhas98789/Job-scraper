@@ -107,7 +107,7 @@
         },
 
         fetchAllSequences() {
-          fetch('https://n8n.sapidblue.in/webhook-test/all-sequence')
+          fetch('https://n8n.sapidblue.in/webhook/all-sequence')
             .then(res => res.json())
             .then(data => {
               if (Array.isArray(data)) {
