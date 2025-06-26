@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" x-data="jobScraperApp()" x-init="loadSequences()" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Sequence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 h-full">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r">
+      <div class="p-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Sequences</h2>
+        <button @click="openNew()" class="px-2 py-1 bg-blue-500 text-white rounded">New</button>
+      </div>
+      <ul class="p-2 overflow-auto" style="max-height: calc(100vh - 4rem);">
+        <template x-for="seq in sequences" :key="seq.id">
+          <li @click="select(seq)"
+              class="p-2 my-1 cursor-pointer rounded hover:bg-gray-200"
+              :class="{'bg-gray-200': selected && selected.id === seq.id}">
+            <div class="flex justify-between">
+              <span x-text="seq.name"></span>
+              <span x-text="seq.status === 'loading' ? '⏳' : seq.status==='completed'? '✅':'❌'"></span>
+            </div>
+          </li>
+        </template>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6">
+      <template x-if="!selected">
+        <div class="text-gray-500">Select a sequence to view details</div>
+      </template>
+      <template x-if="selected">
+        <div>
+          <h2 class="text-2xl font-bold mb-4" x-text="selected.name"></h2>
+          <div class="space-x-2 mb-4">
+            <button @click="run(selected.id)" class="px-3 py-1 bg-green-500 text-white rounded">Run</button>
+            <button @click="download(selected.id)" class="px-3 py-1 bg-blue-500 text-white rounded">Download</button>
+            <button @click="openEdit()" class="px-3 py-1 bg-yellow-500 text-white rounded">Edit</button>
+            <button @click="remove(selected.id)" class="px-3 py-1 bg-red-500 text-white rounded">Delete</button>
+          </div>
+          <div class="overflow-auto border rounded">
+            <table class="min-w-full bg-white">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2 border">Field</th>
+                  <th class="px-4 py-2 border">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(entry, idx) in data" :key="idx">
+                  <tr>
+                    <td class="px-4 py-2 border align-top"><pre x-text="JSON.stringify(entry, null, 2)"></pre></td>
+                  </tr>
+                </template>
+                <template x-if="data.length===0">
+                  <tr><td colspan="2" class="p-4 text-center text-gray-500">No data yet</td></tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+    </main>
+
+    <!-- Modal -->
+    <div x-show="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div @click.away="closeModal()" class="bg-white p-6 rounded shadow-lg w-96">
+        <h3 class="text-lg font-semibold mb-4" x-text="editing ? 'Edit Sequence' : 'New Sequence'"></h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium">Name</label>
+            <input x-model="form.name" type="text" class="w-full border p-2 rounded" placeholder="Sequence Name" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">LinkedIn URL</label>
+            <input x-model="form.url" type="text" class="w-full border p-2 rounded" placeholder="https://www.linkedin.com/jobs/..." />
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button @click="save()" class="px-4 py-1 bg-blue-500 text-white rounded">Save</button>
+            <button @click="closeModal()" class="px-4 py-1 bg-gray-300 rounded">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function jobScraperApp() {
+        return {
+          sequences: [], selected: null, data: [], modalOpen: false,
+          editing: false, form: { id: null, name: '', url: '' },
+          loadSequences() {
+            fetch('/api/sequences').then(r => r.json()).then(i => this.sequences = i);
+          },
+          select(seq) {
+            this.selected = seq; this.fetchData();
+          },
+          openNew() { this.editing = false; this.form = { id: null, name: '', url: '' }; this.modalOpen = true; },
+          openEdit() { Object.assign(this.form, this.selected); this.editing = true; this.modalOpen = true; },
+          closeModal() { this.modalOpen = false; },
+          save() {
+            if (this.editing) {
+              fetch(`/api/sequences/${this.form.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: this.form.name, url: this.form.url })
+              }).then(() => { this.loadSequences(); this.closeModal(); });
+            } else {
+              fetch('https://n8n.sapidblue.in/webhook/jo-sequence-fetch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sequenceName: this.form.name, url: this.form.url })
+              }).then(() => { this.loadSequences(); this.closeModal(); });
+            }
+          },
+          remove(id) { if (!confirm('Delete?')) return; fetch(`/api/sequences/${id}`, { method: 'DELETE' }).then(() => { this.loadSequences(); this.selected = null; this.data = []; }); },
+          run(id) { fetch(`/api/sequences/${id}/run`, { method: 'POST' }).then(() => { this.loadSequences(); }); },
+          fetchData() { fetch(`/api/sequences/${this.selected.id}/data`).then(r => r.json()).then(i => this.data = i); },
+          download(id) { window.location = `/api/sequences/${id}/xlsx`; }
+        }
+      }
+    </script>
+</body>
+</html>
