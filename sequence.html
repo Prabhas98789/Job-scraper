@@ -7,8 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="p-6" x-data="jobSequences()">
-  <div class="max-w-4xl mx-auto">
+<body class="p-6" x-data="jobSequences()" x-init="init()">
+  <div class="max-w-5xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">Job Scraping Sequences</h1>
 
     <div class="flex justify-between mb-4">
@@ -40,7 +40,7 @@
       </div>
     </template>
 
-    <div class="bg-white shadow rounded">
+    <div class="bg-white shadow rounded overflow-x-auto">
       <table class="w-full text-left">
         <thead class="bg-gray-200">
           <tr>
@@ -49,6 +49,7 @@
             <th class="p-2">Count</th>
             <th class="p-2">Status</th>
             <th class="p-2">Created</th>
+            <th class="p-2">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -61,6 +62,13 @@
                 <span :class="seq.status === 'success' ? 'text-green-600' : 'text-yellow-600'" x-text="seq.status"></span>
               </td>
               <td class="p-2" x-text="seq.created_at"></td>
+              <td class="p-2">
+                <a
+                  :href="'job-detail.html?id=' + seq.id"
+                  :class="seq.status !== 'success' ? 'pointer-events-none opacity-50' : 'text-blue-600 hover:underline'"
+                  class="font-medium"
+                >View</a>
+              </td>
             </tr>
           </template>
         </tbody>
