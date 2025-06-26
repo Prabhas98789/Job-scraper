@@ -18,10 +18,8 @@
       </div>
       <ul class="p-2 overflow-auto" style="max-height: calc(100vh - 4rem);">
         <template x-for="seq in sequences" :key="seq.id">
-          <li @click="select(seq)"
-              class="p-2 my-1 cursor-pointer rounded hover:bg-gray-200"
-              :class="{'bg-gray-200': selected && selected.id === seq.id}"
-              :id="'sequence-' + seq.id">
+          <li :class="['p-2 my-1 rounded', (selected && selected.id === seq.id ? 'bg-gray-200' : ''), (seq.status === 'completed' ? 'cursor-pointer hover:bg-gray-200' : 'cursor-not-allowed opacity-50')]"
+              @click="seq.status === 'completed' && select(seq)">
             <div class="flex justify-between">
               <span x-text="seq.name"></span>
               <span x-text="seq.status === 'loading' ? '⏳' : seq.status==='completed'? '✅':'❌'"></span>
@@ -110,7 +108,9 @@
         });
       },
       select(seq) {
-        this.selected = seq; this.fetchData();
+        if (seq.status !== 'completed') return;
+        this.selected = seq;
+        this.fetchData();
       },
       openNew() {
         this.editing = false;
