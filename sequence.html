@@ -14,22 +14,27 @@
     <button @click="showForm = true" class="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Add New Sequence</button>
 
     <template x-if="showForm">
-      <form @submit.prevent="submitForm" class="bg-white p-4 rounded shadow mb-6">
-        <div class="mb-2">
-          <label class="block text-sm font-medium">Name</label>
-          <input type="text" x-model="form.name" class="w-full border px-2 py-1 rounded" required>
-        </div>
-        <div class="mb-2">
-          <label class="block text-sm font-medium">URL</label>
-          <input type="url" x-model="form.url" class="w-full border px-2 py-1 rounded" required>
-        </div>
-        <div class="mb-2">
-          <label class="block text-sm font-medium">Count</label>
-          <input type="number" x-model="form.count" class="w-full border px-2 py-1 rounded" required>
-        </div>
-        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Submit</button>
-        <button type="button" @click="showForm = false" class="ml-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>
-      </form>
+      <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <form @submit.prevent="submitForm" class="bg-white p-6 rounded shadow w-full max-w-md">
+          <h2 class="text-lg font-semibold mb-4">New Sequence</h2>
+          <div class="mb-3">
+            <label class="block text-sm font-medium">Name</label>
+            <input type="text" x-model="form.name" class="w-full border px-2 py-1 rounded" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium">URL</label>
+            <input type="url" x-model="form.url" class="w-full border px-2 py-1 rounded" required>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium">Count</label>
+            <input type="number" x-model="form.count" class="w-full border px-2 py-1 rounded" required>
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Submit</button>
+            <button type="button" @click="showForm = false" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+          </div>
+        </form>
+      </div>
     </template>
 
     <div class="bg-white shadow rounded">
@@ -80,12 +85,22 @@
           .then(res => res.json())
           .then(data => {
             if (data.success) {
-              this.sequences.unshift(data);
+              this.sequences.unshift({
+                id: data.id,
+                name: data.name,
+                url: data.url,
+                count: data.count,
+                status: data.status,
+                created_at: data.created_at
+              });
               this.scheduleStatusCheck(data.id);
               this.showForm = false;
               this.form = { name: '', url: '', count: 10 };
+            } else {
+              alert('Failed to add sequence.');
             }
-          });
+          })
+          .catch(() => alert('Webhook request failed.'));
         },
 
         scheduleStatusCheck(id) {
@@ -103,7 +118,7 @@
                 clearInterval(interval);
               }
             });
-          }, 300000); // 5 mins
+          }, 300000); // 5 minutes
         }
       }
     }
