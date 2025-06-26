@@ -20,7 +20,8 @@
         <template x-for="seq in sequences" :key="seq.id">
           <li @click="select(seq)"
               class="p-2 my-1 cursor-pointer rounded hover:bg-gray-200"
-              :class="{'bg-gray-200': selected && selected.id === seq.id}">
+              :class="{'bg-gray-200': selected && selected.id === seq.id}"
+              :id="'sequence-' + seq.id">
             <div class="flex justify-between">
               <span x-text="seq.name"></span>
               <span x-text="seq.status === 'loading' ? '⏳' : seq.status==='completed'? '✅':'❌'"></span>
@@ -101,8 +102,12 @@
       sequences: [], selected: null, data: [], modalOpen: false,
       editing: false, form: { id: null, name: '', url: '', count: 10 },
       successMessage: false,
+      intervalMap: {},
       loadSequences() {
-        fetch('/api/sequences').then(r => r.json()).then(i => this.sequences = i);
+        fetch('/api/sequences').then(r => r.json()).then(i => {
+          this.sequences = i;
+          this.checkPolling();
+        });
       },
       select(seq) {
         this.selected = seq; this.fetchData();
@@ -161,6 +166,27 @@
       },
       download(id) {
         window.location = `/api/sequences/${id}/xlsx`;
+      },
+      checkPolling() {
+        this.sequences.forEach(seq => {
+          if (seq.status === 'loading' && !this.intervalMap[seq.id]) {
+            this.intervalMap[seq.id] = setInterval(() => {
+              fetch('https://n8n.sapidblue.in/webhook/jo-sequence-fetch-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sequenceId: seq.id })
+              })
+              .then(r => r.json())
+              .then(resp => {
+                if (resp && resp.status === 'completed') {
+                  clearInterval(this.intervalMap[seq.id]);
+                  delete this.intervalMap[seq.id];
+                  this.loadSequences();
+                }
+              });
+            }, 180000);
+          }
+        });
       }
     }
   }
