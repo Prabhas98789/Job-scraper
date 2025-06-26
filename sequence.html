@@ -138,7 +138,6 @@
             body: JSON.stringify({ name: this.form.name, url: this.form.url, count: this.form.count })
           }).then(() => { this.loadSequences(); this.closeModal(); });
         } else {
-          // Trigger the webhook (Apify + DB logic is handled in backend)
           fetch('https://n8n.sapidblue.in/webhook/jo-sequence-fetch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
