@@ -9,7 +9,7 @@
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="p-6" x-data="jobDetailPage()" x-init="fetchJobs()">
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold mb-6">Job Listings</h1>
 
     <div class="mb-4 flex space-x-4">
@@ -18,42 +18,47 @@
     </div>
 
     <template x-if="jobs.length > 0">
-      <div class="space-y-6">
-        <template x-for="(job, index) in jobs" :key="job.id">
-          <div class="bg-white p-6 shadow rounded">
-            <div class="flex items-start space-x-6">
-              <img :src="job.companyLogo" alt="logo" class="w-20 h-20 rounded object-contain border" />
-              <div class="flex-1">
-                <h2 class="text-xl font-semibold" x-text="job.title"></h2>
-                <p class="text-sm text-gray-600" x-text="job.companyName"></p>
-                <p class="text-sm text-gray-500" x-text="job.location"></p>
-                <p class="text-sm text-gray-500">Posted At: <span x-text="job.postedAt"></span></p>
-                <p class="text-sm text-gray-500">Seniority: <span x-text="job.seniorityLevel"></span></p>
-                <p class="text-sm text-gray-500">Job Function: <span x-text="job.jobFunction"></span></p>
-                <p class="text-sm text-gray-500">Industry: <span x-text="job.industries"></span></p>
-                <p class="text-sm text-gray-500">Employees: <span x-text="job.companyEmployeesCount"></span></p>
-                <p class="text-sm text-gray-500">
-                  Website: 
-                  <a class="text-blue-600 hover:underline" :href="job.companyWebsite.startsWith('http') ? job.companyWebsite : 'http://' + job.companyWebsite" target="_blank" x-text="job.companyWebsite"></a>
-                </p>
-                <p class="text-sm text-gray-500">
-                  Job Posting: 
-                  <a class="text-blue-600 hover:underline" :href="job.link" target="_blank">View Job Posting</a>
-                </p>
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <label class="block text-sm font-medium mb-1">Description</label>
-              <textarea x-model="job.descriptionText" class="w-full border p-2 rounded mt-1 text-sm" rows="6"></textarea>
-            </div>
-
-            <div class="mt-3 flex justify-end space-x-3">
-              <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" @click="saveJob(job)">Save</button>
-              <button class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700" @click="deleteJob(job)">Delete</button>
-            </div>
-          </div>
-        </template>
+      <div class="overflow-x-auto bg-white rounded shadow">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Title</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Company</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Location</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Posted At</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Employees</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <template x-for="job in jobs" :key="job.id">
+              <tr>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" x-text="job.title"></td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 flex items-center space-x-2">
+                  <img :src="job.companyLogo" alt="logo" class="w-8 h-8 object-contain rounded" />
+                  <span x-text="job.companyName"></span>
+                </td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" x-text="job.location"></td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" x-text="job.postedAt"></td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" x-text="job.companyEmployeesCount"></td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 space-x-1">
+                  <button
+                    @click="viewJob(job.id)"
+                    class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >View</button>
+                  <button
+                    @click="saveJob(job)"
+                    class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                  >Save</button>
+                  <button
+                    @click="deleteJob(job)"
+                    class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                  >Delete</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
       </div>
     </template>
 
@@ -109,7 +114,6 @@
           .then(resp => {
             if (resp.success) {
               alert('Deleted successfully');
-              // Remove from jobs array without page reload
               this.jobs = this.jobs.filter(j => j.id !== job.id);
             } else {
               alert('Failed to delete');
@@ -126,8 +130,13 @@
           XLSX.writeFile(wb, 'job_data.xlsx');
         },
 
+        viewJob(jobId) {
+          // Pass the job id as query param to your detailed view page
+          window.location.href = `job-view.html?id=${jobId}`;
+        },
+
         goBack() {
-          window.location.href = 'index.html'; // Adjust path as needed
+          window.location.href = 'index.html'; // Change this to your sequences page URL
         }
       }
     }
