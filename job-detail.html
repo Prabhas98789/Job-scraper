@@ -1,1 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Detail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="p-6" x-data="jobDetail()" x-init="init()">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Job Details</h1>
 
+    <div class="mb-4 flex justify-end">
+      <button @click="downloadExcel" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Download Excel</button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white shadow rounded text-sm">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="p-2">Title</th>
+            <th class="p-2">Company</th>
+            <th class="p-2">Location</th>
+            <th class="p-2">Posted</th>
+            <th class="p-2">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(job, index) in filteredJobs" :key="job.id">
+            <tr class="border-t">
+              <td class="p-2">
+                <input x-model="job.title" class="w-full border px-1 py-1 rounded" />
+              </td>
+              <td class="p-2">
+                <input x-model="job.companyName" class="w-full border px-1 py-1 rounded" />
+              </td>
+              <td class="p-2">
+                <input x-model="job.location" class="w-full border px-1 py-1 rounded" />
+              </td>
+              <td class="p-2">
+                <input x-model="job.postedAt" class="w-full border px-1 py-1 rounded" />
+              </td>
+              <td class="p-2">
+                <button @click="saveJob(job)" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function jobDetail() {
+      return {
+        jobs: [],
+        get filteredJobs() {
+          return this.jobs;
+        },
+
+        init() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const id = urlParams.get('id');
+          fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sequence_id: id })
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (Array.isArray(data)) this.jobs = data;
+            });
+        },
+
+        saveJob(job) {
+          fetch('https://n8n.sapidblue.in/webhook/edit-data-job', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(job)
+          })
+          .then(() => alert('Job updated successfully'))
+          .catch(() => alert('Failed to save changes'));
+        },
+
+        downloadExcel() {
+          const worksheet = XLSX.utils.json_to_sheet(this.jobs);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
+          XLSX.writeFile(workbook, "jobs.xlsx");
+        }
+      }
+    }
+  </script>
+</body>
+</html>
