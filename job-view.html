@@ -140,7 +140,11 @@
         },
 
         goBack() {
-          window.history.back();
+          if (this.sequenceId) {
+            window.location.href = `job-detail.html?id=${this.sequenceId}`;
+          } else {
+            window.history.back();
+          }
         }
       }
     }
