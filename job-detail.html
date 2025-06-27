@@ -71,16 +71,17 @@
     function jobDetailPage() {
       return {
         jobs: [],
+        sequenceId: null,
 
         fetchJobs() {
           const urlParams = new URLSearchParams(window.location.search);
-          const id = urlParams.get('id');
-          if (!id) return;
+          this.sequenceId = urlParams.get('id');
+          if (!this.sequenceId) return;
 
           fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sequence_id: id })
+            body: JSON.stringify({ sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(data => {
@@ -108,7 +109,7 @@
           fetch('https://n8n.sapidblue.in/webhook/delete-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: job.id })
+            body: JSON.stringify({ id: job.id, sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(resp => {
@@ -131,12 +132,12 @@
         },
 
         viewJob(jobId) {
-          // Pass the job id as query param to your detailed view page
-          window.location.href = `job-view.html?id=${jobId}`;
+          // Pass both sequence_id and job id as query params
+          window.location.href = `job-view.html?id=${jobId}&sequence_id=${this.sequenceId}`;
         },
 
         goBack() {
-          window.location.href = 'index.html'; // Change this to your sequences page URL
+          window.location.href = 'index.html'; // Update if your sequences page has a different URL
         }
       }
     }
