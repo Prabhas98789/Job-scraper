@@ -2,93 +2,192 @@
 <html lang="en" class="bg-gray-100">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Job Detail</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="p-6" x-data="jobDetail()" x-init="init()">
-  <div class="max-w-6xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Job Details</h1>
 
-    <div class="mb-4 flex justify-end">
-      <button @click="downloadExcel" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Download Excel</button>
+  <div class="max-w-5xl mx-auto bg-white p-6 rounded shadow">
+    <h1 class="text-3xl font-bold mb-6" x-text="job.title || 'Loading...'"></h1>
+
+    <div class="flex items-center space-x-4 mb-6">
+      <img :src="job.companyLogo" alt="Company Logo" class="w-24 h-24 object-contain" />
+      <div>
+        <a :href="job.companyLinkedinUrl" target="_blank" class="text-blue-600 hover:underline font-semibold text-xl" x-text="job.companyName"></a>
+        <div class="text-gray-600" x-text="job.location"></div>
+        <div class="text-gray-500 text-sm">Posted at: <span x-text="job.postedAt"></span></div>
+        <div class="mt-2">
+          <a :href="job.link" target="_blank" class="text-indigo-600 hover:underline text-sm font-medium">View Job Posting</a>
+        </div>
+      </div>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="w-full bg-white shadow rounded text-sm">
-        <thead class="bg-gray-200">
-          <tr>
-            <th class="p-2">Title</th>
-            <th class="p-2">Company</th>
-            <th class="p-2">Location</th>
-            <th class="p-2">Posted</th>
-            <th class="p-2">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template x-for="(job, index) in filteredJobs" :key="job.id">
-            <tr class="border-t">
-              <td class="p-2">
-                <input x-model="job.title" class="w-full border px-1 py-1 rounded" />
-              </td>
-              <td class="p-2">
-                <input x-model="job.companyName" class="w-full border px-1 py-1 rounded" />
-              </td>
-              <td class="p-2">
-                <input x-model="job.location" class="w-full border px-1 py-1 rounded" />
-              </td>
-              <td class="p-2">
-                <input x-model="job.postedAt" class="w-full border px-1 py-1 rounded" />
-              </td>
-              <td class="p-2">
-                <button @click="saveJob(job)" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
+    <form @submit.prevent="saveJob">
+      <div class="mb-4">
+        <label class="block font-semibold mb-1">Job Description</label>
+        <textarea x-model="job.descriptionText" rows="10" class="w-full border rounded p-2"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block font-semibold mb-1">Seniority Level</label>
+          <input type="text" x-model="job.seniorityLevel" class="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Employment Type</label>
+          <input type="text" x-model="job.employmentType" class="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Job Function</label>
+          <input type="text" x-model="job.jobFunction" class="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Industries</label>
+          <input type="text" x-model="job.industries" class="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Company Description</label>
+          <textarea x-model="job.companyDescription" rows="4" class="w-full border rounded p-2"></textarea>
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Company Employees Count</label>
+          <input type="number" x-model.number="job.companyEmployeesCount" class="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">Company Website</label>
+          <input type="url" x-model="job.companyWebsite" class="w-full border rounded p-2" />
+        </div>
+      </div>
+
+      <div class="flex space-x-4">
+        <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700" :disabled="saving">
+          <span x-text="saving ? 'Saving...' : 'Save'"></span>
+        </button>
+
+        <button type="button" @click="deleteJob" class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700" :disabled="deleting">
+          <span x-text="deleting ? 'Deleting...' : 'Delete'"></span>
+        </button>
+
+        <button type="button" @click="exportExcel" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          Export Excel
+        </button>
+      </div>
+    </form>
   </div>
 
   <script>
     function jobDetail() {
       return {
-        jobs: [],
-        get filteredJobs() {
-          return this.jobs;
-        },
+        job: {},
+        saving: false,
+        deleting: false,
 
         init() {
-          const urlParams = new URLSearchParams(window.location.search);
-          const id = urlParams.get('id');
+          const params = new URLSearchParams(window.location.search);
+          const id = params.get('id');
+          if (!id) {
+            alert('No job ID provided');
+            return;
+          }
+          this.fetchJob(id);
+        },
+
+        fetchJob(id) {
           fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sequence_id: id })
           })
-            .then(res => res.json())
-            .then(data => {
-              if (Array.isArray(data)) this.jobs = data;
-            });
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+              this.job = data[0];
+              // Convert numeric fields properly if needed
+              if (this.job.companyEmployeesCount) {
+                this.job.companyEmployeesCount = Number(this.job.companyEmployeesCount);
+              }
+            } else {
+              alert('No job data found');
+            }
+          })
+          .catch(() => alert('Failed to load job data.'));
         },
 
-        saveJob(job) {
+        saveJob() {
+          this.saving = true;
+          // Send entire job object to edit-data-job webhook
           fetch('https://n8n.sapidblue.in/webhook/edit-data-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(job)
+            body: JSON.stringify(this.job)
           })
-          .then(() => alert('Job updated successfully'))
-          .catch(() => alert('Failed to save changes'));
+          .then(res => res.json())
+          .then(data => {
+            this.saving = false;
+            if (data.success) {
+              alert('Saved successfully');
+            } else {
+              alert('Failed to save job data');
+            }
+          })
+          .catch(() => {
+            this.saving = false;
+            alert('Error saving job data');
+          });
         },
 
-        downloadExcel() {
-          const worksheet = XLSX.utils.json_to_sheet(this.jobs);
-          const workbook = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
-          XLSX.writeFile(workbook, "jobs.xlsx");
+        deleteJob() {
+          if (!confirm('Are you sure you want to delete this job?')) return;
+          this.deleting = true;
+          fetch('https://n8n.sapidblue.in/webhook/delete-job', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: this.job.id })
+          })
+          .then(res => res.json())
+          .then(data => {
+            this.deleting = false;
+            if (data.success) {
+              alert('Job deleted');
+              window.location.href = 'index.html'; // Redirect to your main page
+            } else {
+              alert('Failed to delete job');
+            }
+          })
+          .catch(() => {
+            this.deleting = false;
+            alert('Error deleting job');
+          });
+        },
+
+        exportExcel() {
+          if (!this.job || !this.job.id) {
+            alert('No job data to export');
+            return;
+          }
+          const wsData = [
+            ['Field', 'Value'],
+            ['Job Title', this.job.title || ''],
+            ['Company Name', this.job.companyName || ''],
+            ['Location', this.job.location || ''],
+            ['Posted At', this.job.postedAt || ''],
+            ['Job Description', this.job.descriptionText || ''],
+            ['Seniority Level', this.job.seniorityLevel || ''],
+            ['Employment Type', this.job.employmentType || ''],
+            ['Job Function', this.job.jobFunction || ''],
+            ['Industries', this.job.industries || ''],
+            ['Company Description', this.job.companyDescription || ''],
+            ['Company Employees Count', this.job.companyEmployeesCount || ''],
+            ['Company Website', this.job.companyWebsite || ''],
+            ['Job Posting Link', this.job.link || ''],
+          ];
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Job Detail');
+          XLSX.writeFile(wb, `job_${this.job.id}.xlsx`);
         }
       }
     }
