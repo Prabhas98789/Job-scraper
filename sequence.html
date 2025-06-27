@@ -53,7 +53,7 @@
           </tr>
         </thead>
         <tbody>
-          <template x-for="seq in sequences" :key="seq.id">
+          <template x-for="seq in sequences" :key="seq.sequence_id">
             <tr class="border-t">
               <td class="p-2" x-text="seq.name"></td>
               <td class="p-2 truncate max-w-[200px]" :title="seq.url">
@@ -66,11 +66,11 @@
               <td class="p-2" x-text="seq.created_at"></td>
               <td class="p-2">
                 <template x-if="seq.status === 'complete'">
-                  <a href="#" @click.prevent="viewJob(seq.id)" class="text-blue-600 hover:underline font-medium">View</a>
+                  <a href="#" @click.prevent="viewJob(seq.sequence_id)" class="text-blue-600 hover:underline font-medium">View</a>
                 </template>
                 <template x-if="seq.status !== 'complete'">
                   <button
-                    @click="runJob(seq.id)"
+                    @click="runJob(seq.sequence_id)"
                     class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
                     x-text="seq.status === 'loading' ? 'Running...' : 'Run'"
                   ></button>
@@ -144,18 +144,18 @@
           .catch(() => alert('Failed to trigger job.'));
         },
 
-        viewJob(id) {
+        viewJob(sequence_id) {
           fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
+            body: JSON.stringify({ sequence_id })
           })
           .then(() => {
-            window.location.href = `job-detail.html?id=${id}`;
+            window.location.href = `job-detail.html?id=${sequence_id}`;
           })
           .catch(() => {
             alert('Failed to fetch job data.');
-            window.location.href = `job-detail.html?id=${id}`;
+            window.location.href = `job-detail.html?id=${sequence_id}`;
           });
         },
 
