@@ -109,7 +109,8 @@
                 url: data.url,
                 count: data.count,
                 status: data.status || 'pending',
-                created_at: data.created_at
+                created_at: data.created_at,
+                remainingTime: 0
               });
               this.form = { name: '', url: '', count: 10 };
               this.showForm = false;
@@ -125,7 +126,28 @@
             .then(res => res.json())
             .then(data => {
               if (Array.isArray(data)) {
-                this.sequences = data.map(seq => ({ ...seq, remainingTime: 0 }));
+                this.sequences = data.map(seq => {
+                  const start = localStorage.getItem(`run_start_${seq.id}`);
+                  if (seq.status === 'running' && start) {
+                    const elapsed = Math.floor((Date.now() - Number(start)) / 1000);
+                    const remaining = Math.max(0, 300 - elapsed);
+                    seq.remainingTime = remaining;
+                    if (remaining > 0) {
+                      const interval = setInterval(() => {
+                        if (seq.remainingTime > 0) {
+                          seq.remainingTime--;
+                        } else {
+                          clearInterval(interval);
+                          localStorage.removeItem(`run_start_${seq.id}`);
+                          this.fetchAllSequences();
+                        }
+                      }, 1000);
+                    }
+                  } else {
+                    seq.remainingTime = 0;
+                  }
+                  return seq;
+                });
               }
             })
             .catch(() => alert('Failed to fetch sequences.'));
@@ -141,14 +163,16 @@
             const seq = this.sequences.find(s => s.id === id);
             if (seq) {
               seq.status = 'running';
-              seq.remainingTime = 5 * 60; // 5 minutes in seconds
+              seq.remainingTime = 300;
+              localStorage.setItem(`run_start_${id}`, Date.now());
 
               const interval = setInterval(() => {
                 if (seq.remainingTime > 0) {
                   seq.remainingTime--;
                 } else {
                   clearInterval(interval);
-                  this.fetchAllSequences(); // Refresh UI after 5 min
+                  localStorage.removeItem(`run_start_${id}`);
+                  this.fetchAllSequences();
                 }
               }, 1000);
             }
