@@ -72,7 +72,7 @@
                   <button
                     @click="runJob(seq.id)"
                     class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                    x-text="seq.status === 'loading' ? 'Running...' : 'Run'"
+                    x-html="seq.remainingTime ? `Running... (${Math.floor(seq.remainingTime / 60).toString().padStart(2, '0')}:${(seq.remainingTime % 60).toString().padStart(2, '0')})` : (seq.status === 'loading' ? 'Running...' : 'Run')"
                   ></button>
                 </template>
               </td>
@@ -125,8 +125,7 @@
             .then(res => res.json())
             .then(data => {
               if (Array.isArray(data)) {
-                console.log('Fetched sequences:', data); // optional debug
-                this.sequences = data;
+                this.sequences = data.map(seq => ({ ...seq, remainingTime: 0 }));
               }
             })
             .catch(() => alert('Failed to fetch sequences.'));
@@ -140,7 +139,19 @@
           })
           .then(() => {
             const seq = this.sequences.find(s => s.id === id);
-            if (seq) seq.status = 'loading';
+            if (seq) {
+              seq.status = 'running';
+              seq.remainingTime = 5 * 60; // 5 minutes in seconds
+
+              const interval = setInterval(() => {
+                if (seq.remainingTime > 0) {
+                  seq.remainingTime--;
+                } else {
+                  clearInterval(interval);
+                  this.fetchAllSequences(); // Refresh UI after 5 min
+                }
+              }, 1000);
+            }
           })
           .catch(() => alert('Failed to trigger job.'));
         },
