@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>View Job Details</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="p-6" x-data="jobViewPage()" x-init="fetchJob()">
+  <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+    <h1 class="text-3xl font-bold mb-6">Job Details</h1>
+
+    <template x-if="job">
+      <div class="space-y-4">
+        <div class="flex space-x-4 items-center">
+          <img :src="job.companyLogo" alt="Company Logo" class="w-24 h-24 object-contain rounded" />
+          <div>
+            <h2 class="text-2xl font-semibold" x-text="job.title"></h2>
+            <a :href="job.link" target="_blank" class="text-blue-600 hover:underline">View Job Posting</a><br/>
+            <a :href="job.companyLinkedinUrl" target="_blank" class="text-blue-600 hover:underline mt-1 block">Company LinkedIn</a>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block font-medium">Company Name</label>
+            <input type="text" x-model="job.companyName" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Location</label>
+            <input type="text" x-model="job.location" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Posted At</label>
+            <input type="date" x-model="job.postedAt" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Seniority Level</label>
+            <input type="text" x-model="job.seniorityLevel" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Employment Type</label>
+            <input type="text" x-model="job.employmentType" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Job Function</label>
+            <input type="text" x-model="job.jobFunction" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Industry</label>
+            <input type="text" x-model="job.industries" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Employees Count</label>
+            <input type="number" x-model.number="job.companyEmployeesCount" class="border rounded px-2 py-1 w-full" />
+          </div>
+          <div>
+            <label class="block font-medium">Company Website</label>
+            <input type="url" x-model="job.companyWebsite" class="border rounded px-2 py-1 w-full" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium">Job Description</label>
+          <textarea x-model="job.descriptionText" rows="8" class="border rounded px-2 py-1 w-full"></textarea>
+        </div>
+
+        <div class="flex space-x-4 justify-end">
+          <button
+            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            @click="saveJob"
+          >Save</button>
+          <button
+            class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            @click="deleteJob"
+          >Delete</button>
+          <button
+            class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            @click="downloadExcel"
+          >Download Excel</button>
+          <button
+            class="px-4 py-2 bg-gray-400 text-black rounded hover:bg-gray-500"
+            @click="goBack"
+          >Back</button>
+        </div>
+      </div>
+    </template>
+
+    <template x-if="!job">
+      <p>Loading job details...</p>
+    </template>
+  </div>
+
+  <script>
+    function jobViewPage() {
+      return {
+        job: null,
+
+        fetchJob() {
+          const params = new URLSearchParams(window.location.search);
+          const id = params.get('id');
+          if (!id) {
+            alert('No job ID provided');
+            return;
+          }
+
+          fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })  // Sending job id to fetch single job
+          })
+          .then(res => res.json())
+          .then(data => {
+            // Data can be an array or single object depending on your webhook.
+            // If array, find the job with matching id.
+            if (Array.isArray(data)) {
+              this.job = data.find(j => j.id === id) || null;
+            } else {
+              this.job = data;
+            }
+            if (!this.job) alert('Job not found');
+          })
+          .catch(() => alert('Failed to fetch job details'));
+        },
+
+        saveJob() {
+          if (!this.job) return;
+          fetch('https://n8n.sapidblue.in/webhook/edit-data-job', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.job)
+          })
+          .then(res => res.json())
+          .then(resp => alert(resp.success ? 'Saved successfully' : 'Failed to save'))
+          .catch(() => alert('Failed to save job'));
+        },
+
+        deleteJob() {
+          if (!this.job) return;
+          if (!confirm('Are you sure you want to delete this job?')) return;
+
+          fetch('https://n8n.sapidblue.in/webhook/delete-job', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: this.job.id })
+          })
+          .then(res => res.json())
+          .then(resp => {
+            if (resp.success) {
+              alert('Deleted successfully');
+              this.goBack();
+            } else {
+              alert('Failed to delete');
+            }
+          })
+          .catch(() => alert('Failed to delete job'));
+        },
+
+        downloadExcel() {
+          if (!this.job) return;
+          const ws = XLSX.utils.json_to_sheet([this.job]);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Job');
+          XLSX.writeFile(wb, 'job_detail.xlsx');
+        },
+
+        goBack() {
+          window.history.back();
+        }
+      }
+    }
+  </script>
+</body>
+</html>
