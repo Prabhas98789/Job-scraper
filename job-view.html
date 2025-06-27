@@ -68,27 +68,31 @@
       return {
         job: {},
         loading: false,
+        sequence_id: null,
+        id: null,
 
         fetchJob() {
           const urlParams = new URLSearchParams(window.location.search);
-          const id = urlParams.get('id');
-          const sequence_id = urlParams.get('sequence_id');
-          if (!id || !sequence_id) {
-            alert('Missing job id or sequence id');
+          this.sequence_id = urlParams.get('sequence_id');
+          this.id = urlParams.get('id');
+
+          if (!this.sequence_id || !this.id) {
+            alert('Missing sequence_id or job id');
             return;
           }
 
           fetch('https://n8n.sapidblue.in/webhook/view-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, sequence_id })
+            body: JSON.stringify({ id: this.id, sequence_id: this.sequence_id })
           })
           .then(res => res.json())
           .then(data => {
             if (data && data.id) {
               this.job = data;
-              // Make sure sequence_id is preserved if not in response
-              if (!this.job.sequence_id) this.job.sequence_id = sequence_id;
+              // ensure both IDs are in job object for save/delete
+              this.job.sequence_id = this.sequence_id;
+              this.job.id = this.id;
             } else {
               alert('Job not found');
             }
@@ -101,7 +105,7 @@
           fetch('https://n8n.sapidblue.in/webhook/edit-data-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...this.job, id: this.job.id, sequence_id: this.job.sequence_id })
+            body: JSON.stringify(this.job)
           })
           .then(res => res.json())
           .then(resp => {
@@ -118,7 +122,7 @@
           fetch('https://n8n.sapidblue.in/webhook/delete-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: this.job.id, sequence_id: this.job.sequence_id })
+            body: JSON.stringify({ id: this.id, sequence_id: this.sequence_id })
           })
           .then(res => res.json())
           .then(resp => {
