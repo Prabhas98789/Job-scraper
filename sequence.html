@@ -65,14 +65,15 @@
               </td>
               <td class="p-2" x-text="seq.created_at"></td>
               <td class="p-2">
-                <template x-if="seq.status === 'loading'">
-                  <button class="px-3 py-1 bg-yellow-400 text-white rounded cursor-not-allowed" disabled>Running...</button>
-                </template>
                 <template x-if="seq.status === 'complete'">
                   <a href="#" @click.prevent="viewJob(seq.id)" class="text-blue-600 hover:underline font-medium">View</a>
                 </template>
-                <template x-if="seq.status !== 'loading' && seq.status !== 'complete'">
-                  <button @click="runJob(seq.id)" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">Run</button>
+                <template x-if="seq.status !== 'complete'">
+                  <button
+                    @click="runJob(seq.id)"
+                    class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                    x-text="seq.status === 'loading' ? 'Running...' : 'Run'"
+                  ></button>
                 </template>
               </td>
             </tr>
