@@ -3,129 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Job Details</title>
+  <title>Job View Detail</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="p-6" x-data="jobDetailPage()" x-init="fetchJobs()">
-  <div class="max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6">Job Listings</h1>
+<body class="p-6" x-data="jobViewPage()" x-init="fetchJob()">
 
-    <div class="mb-4">
-      <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" @click="downloadExcel">Download Excel</button>
+  <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+
+    <button 
+      @click="goBack()" 
+      class="mb-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+    >
+      ← Back
+    </button>
+
+    <h1 class="text-3xl font-bold mb-4" x-text="job.title || 'Loading...'"></h1>
+
+    <div class="flex space-x-6">
+      <div class="w-32 h-32 flex-shrink-0">
+        <img :src="job.companyLogo" alt="Company Logo" class="object-contain w-full h-full rounded" />
+      </div>
+      <div class="flex-1 space-y-2">
+        <p><strong>Company:</strong> <a :href="job.companyLinkedinUrl" target="_blank" class="text-blue-600 hover:underline" x-text="job.companyName"></a></p>
+        <p><strong>Location:</strong> <span x-text="job.location"></span></p>
+        <p><strong>Posted At:</strong> <span x-text="job.postedAt"></span></p>
+        <p><strong>Seniority Level:</strong> <span x-text="job.seniorityLevel"></span></p>
+        <p><strong>Employment Type:</strong> <span x-text="job.employmentType"></span></p>
+        <p><strong>Job Function:</strong> <span x-text="job.jobFunction"></span></p>
+        <p><strong>Industries:</strong> <span x-text="job.industries"></span></p>
+        <p><strong>Employees:</strong> <span x-text="job.companyEmployeesCount"></span></p>
+        <p><strong>Company Website:</strong> 
+          <a :href="job.companyWebsite" target="_blank" class="text-blue-600 hover:underline" x-text="job.companyWebsite"></a>
+        </p>
+        <p><strong>Job Posting:</strong> 
+          <a :href="job.link" target="_blank" class="text-blue-600 hover:underline">View on LinkedIn</a>
+        </p>
+      </div>
     </div>
 
-    <template x-if="jobs.length > 0">
-      <div class="overflow-x-auto">
-        <table class="min-w-full bg-white shadow rounded">
-          <thead>
-            <tr class="bg-gray-200 text-left">
-              <th class="p-3 border">Title</th>
-              <th class="p-3 border">Company</th>
-              <th class="p-3 border">Location</th>
-              <th class="p-3 border">Posted At</th>
-              <th class="p-3 border">Employees</th>
-              <th class="p-3 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template x-for="job in jobs" :key="job.id">
-              <tr class="border-t">
-                <td class="p-3 border" x-text="job.title"></td>
-                <td class="p-3 border" x-text="job.companyName"></td>
-                <td class="p-3 border" x-text="job.location"></td>
-                <td class="p-3 border" x-text="job.postedAt"></td>
-                <td class="p-3 border" x-text="job.companyEmployeesCount"></td>
-                <td class="p-3 border space-x-2">
-                  <a
-                    :href="`job-view.html?sequence_id=${sequenceId}&id=${job.id}`"
-                    class="text-blue-600 hover:underline"
-                  >View</a>
-                  <button
-                    @click="saveJob(job)"
-                    class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >Save</button>
-                  <button
-                    @click="deleteJob(job.id)"
-                    class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                  >Delete</button>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
-    </template>
+    <div class="mt-6">
+      <label for="description" class="block font-medium mb-1">Job Description</label>
+      <textarea id="description" x-model="job.descriptionText" rows="8" class="w-full border rounded p-2 text-sm"></textarea>
+    </div>
 
-    <template x-if="jobs.length === 0">
-      <p>No job data found for this sequence.</p>
-    </template>
+    <div class="mt-6 flex space-x-4 justify-end">
+      <button
+        @click="saveJob()"
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >Save</button>
+
+      <button
+        @click="deleteJob()"
+        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+      >Delete</button>
+    </div>
+
   </div>
 
   <script>
-    function jobDetailPage() {
+    function jobViewPage() {
       return {
-        jobs: [],
+        job: {},
+        jobId: null,
         sequenceId: null,
 
-        fetchJobs() {
+        fetchJob() {
           const urlParams = new URLSearchParams(window.location.search);
-          this.sequenceId = urlParams.get('id'); // sequence_id from URL param `id`
-          if (!this.sequenceId) {
-            alert('No sequence id provided');
+          this.jobId = urlParams.get('id');
+          this.sequenceId = urlParams.get('sequence_id');
+          if (!this.jobId || !this.sequenceId) {
+            alert('Job id or sequence id missing in URL');
             return;
           }
-          fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
+
+          fetch('https://n8n.sapidblue.in/webhook/view-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sequence_id: this.sequenceId })
+            body: JSON.stringify({ id: this.jobId, sequence_id: this.sequenceId })
           })
-          .then(res => res.json())
-          .then(data => {
-            if (Array.isArray(data)) {
-              this.jobs = data;
-            }
-          })
-          .catch(() => alert('Failed to fetch job data'));
+            .then(res => res.json())
+            .then(data => {
+              if (data && data.id) {
+                this.job = data;
+              } else {
+                alert('Job not found');
+              }
+            })
+            .catch(() => alert('Failed to fetch job details'));
         },
 
-        saveJob(job) {
+        saveJob() {
+          if (!this.jobId || !this.sequenceId) {
+            alert('Missing job id or sequence id');
+            return;
+          }
+          // Include ids along with the job data to update
+          const payload = { ...this.job, id: this.jobId, sequence_id: this.sequenceId };
+
           fetch('https://n8n.sapidblue.in/webhook/edit-data-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(job)
+            body: JSON.stringify(payload)
           })
-          .then(res => res.json())
-          .then(resp => alert(resp.success ? 'Saved successfully' : 'Failed to save'))
-          .catch(() => alert('Error saving job data'));
+            .then(res => res.json())
+            .then(resp => {
+              alert(resp.success ? 'Saved successfully' : 'Failed to save');
+            })
+            .catch(() => alert('Error saving job data'));
         },
 
-        deleteJob(jobId) {
+        deleteJob() {
           if (!confirm('Are you sure you want to delete this job?')) return;
+
+          if (!this.jobId || !this.sequenceId) {
+            alert('Missing job id or sequence id');
+            return;
+          }
+
           fetch('https://n8n.sapidblue.in/webhook/delete-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: jobId })
+            body: JSON.stringify({ id: this.jobId, sequence_id: this.sequenceId })
           })
-          .then(res => res.json())
-          .then(resp => {
-            if (resp.success) {
-              alert('Deleted successfully');
-              // Remove deleted job from jobs array
-              this.jobs = this.jobs.filter(j => j.id !== jobId);
-            } else {
-              alert('Failed to delete');
-            }
-          })
-          .catch(() => alert('Error deleting job'));
+            .then(res => res.json())
+            .then(resp => {
+              if (resp.success) {
+                alert('Deleted successfully');
+                this.goBack();
+              } else {
+                alert('Failed to delete');
+              }
+            })
+            .catch(() => alert('Error deleting job'));
         },
 
-        downloadExcel() {
-          const ws = XLSX.utils.json_to_sheet(this.jobs);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, 'Jobs');
-          XLSX.writeFile(wb, 'job_data.xlsx');
+        goBack() {
+          window.history.back();
         }
       }
     }
