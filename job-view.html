@@ -41,12 +41,22 @@
         <p><strong>Job Posting:</strong> 
           <a :href="job.link" target="_blank" class="text-blue-600 hover:underline">View on LinkedIn</a>
         </p>
+
+        <!-- Extra fields -->
+        <p><strong>Job Post ID:</strong> <span x-text="job.jobpost_id"></span></p>
+        <p><strong>Tracking ID:</strong> <span x-text="job.trackingId"></span></p>
+        <p><strong>Ref ID:</strong> <span x-text="job.refId"></span></p>
       </div>
     </div>
 
     <div class="mt-6">
       <label for="description" class="block font-medium mb-1">Job Description</label>
       <textarea id="description" x-model="job.descriptionText" rows="8" class="w-full border rounded p-2 text-sm"></textarea>
+    </div>
+
+    <div class="mt-6">
+      <label class="block font-medium mb-1">Company Description</label>
+      <pre class="whitespace-pre-wrap border rounded p-2 text-sm" x-text="job.companyDescription"></pre>
     </div>
 
     <div class="mt-6 flex space-x-4 justify-end">
@@ -140,11 +150,7 @@
         },
 
         goBack() {
-          if (this.sequenceId) {
-            window.location.href = `job-detail.html?id=${this.sequenceId}`;
-          } else {
-            window.history.back();
-          }
+          window.history.back();
         }
       }
     }
