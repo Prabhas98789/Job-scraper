@@ -162,7 +162,7 @@
 
         scheduleStatusCheck(id) {
           const interval = setInterval(() => {
-            fetch('https://n8n.sapidblue.in/webhook-test/job-sequence-fetch-data', {
+            fetch('https://n8n.sapidblue.in/job-sequence-fetch-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id })
