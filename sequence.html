@@ -61,23 +61,18 @@
               </td>
               <td class="p-2" x-text="seq.count"></td>
               <td class="p-2">
-                <span :class="seq.status === 'success' ? 'text-green-600' : 'text-yellow-600'" x-text="seq.status"></span>
+                <span :class="seq.status === 'complete' ? 'text-green-600' : 'text-yellow-600'" x-text="seq.status"></span>
               </td>
               <td class="p-2" x-text="seq.created_at"></td>
               <td class="p-2">
-                <template x-if="seq.status !== 'success'">
-                  <button
-                    @click="triggerRun(seq.id)"
-                    class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                    x-text="seq.status === 'loading' ? 'Running...' : 'Run'"
-                    :disabled="seq.status === 'loading'"
-                  ></button>
+                <template x-if="seq.status === 'loading'">
+                  <button class="px-3 py-1 bg-yellow-400 text-white rounded cursor-not-allowed" disabled>Running...</button>
                 </template>
-                <template x-if="seq.status === 'success'">
-                  <a
-                    :href="'job-detail.html?id=' + seq.id"
-                    class="text-blue-600 hover:underline font-medium"
-                  >View</a>
+                <template x-if="seq.status === 'complete'">
+                  <a href="#" @click.prevent="viewJob(seq.id)" class="text-blue-600 hover:underline font-medium">View</a>
+                </template>
+                <template x-if="seq.status !== 'loading' && seq.status !== 'complete'">
+                  <button @click="runJob(seq.id)" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">Run</button>
                 </template>
               </td>
             </tr>
@@ -94,7 +89,6 @@
         form: { name: '', url: '', count: 10 },
         sequences: [],
 
-        // 👉 Webhook #1: Triggered when new sequence is submitted
         submitForm() {
           fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch', {
             method: 'POST',
@@ -108,16 +102,14 @@
           .then(res => res.json())
           .then(data => {
             if (data.success) {
-              const newSeq = {
+              this.sequences.unshift({
                 id: data.id,
                 name: data.name,
                 url: data.url,
                 count: data.count,
                 status: data.status || 'pending',
                 created_at: data.created_at
-              };
-              this.sequences.unshift(newSeq);
-              this.scheduleStatusCheck(data.id);
+              });
               this.form = { name: '', url: '', count: 10 };
               this.showForm = false;
             } else {
@@ -127,76 +119,43 @@
           .catch(() => alert('Webhook request failed.'));
         },
 
-        // 👉 Webhook #2: Called on reload. For 'loading' jobs, triggers webhook and polling
         fetchAllSequences() {
           fetch('https://n8n.sapidblue.in/webhook/all-sequence')
             .then(res => res.json())
             .then(data => {
               if (Array.isArray(data)) {
                 this.sequences = data;
-
-                this.sequences.forEach(seq => {
-                  if (seq.status === 'loading') {
-                    // 👉 Webhook #3: Trigger job-sequence-fetch-data on reload
-                    fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ id: seq.id })
-                    }).catch(() => console.warn(`Failed to trigger fetch-data for ID: ${seq.id}`));
-
-                    this.scheduleStatusCheck(seq.id);
-                  }
-                });
               }
             })
             .catch(() => alert('Failed to fetch sequences.'));
         },
 
-        // 👉 Webhook #4 & #3: Called when user clicks "Run"
-        triggerRun(id) {
-          const seq = this.sequences.find(s => s.id === id);
-          if (!seq || seq.status === 'loading') return;
-
-          seq.status = 'loading';
-
-          // Webhook #4: Triggers main job execution
+        runJob(id) {
           fetch('https://n8n.sapidblue.in/webhook/fetch-job-postings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id })
           })
           .then(() => {
-            // Webhook #3: Also trigger job-sequence-fetch-data
-            fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id })
-            }).catch(() => console.warn(`Failed to trigger fetch-data for ID: ${id}`));
-
-            this.scheduleStatusCheck(id);
+            const seq = this.sequences.find(s => s.id === id);
+            if (seq) seq.status = 'loading';
           })
-          .catch(() => alert('Failed to trigger job fetch'));
+          .catch(() => alert('Failed to trigger job.'));
         },
 
-        // 👉 Webhook #5 (polling): Check status every 15s until success
-        scheduleStatusCheck(id) {
-          const interval = setInterval(() => {
-            fetch('https://n8n.sapidblue.in/webhook-test/job-sequence-fetch-data', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id })
-            })
-            .then(res => res.json())
-            .then(data => {
-              const seq = this.sequences.find(s => s.id === id);
-              if (seq && data.status) {
-                seq.status = data.status;
-              }
-              if (data.status === 'success') {
-                clearInterval(interval);
-              }
-            });
-          }, 15000);
+        viewJob(id) {
+          fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          })
+          .then(() => {
+            window.location.href = `job-detail.html?id=${id}`;
+          })
+          .catch(() => {
+            alert('Failed to fetch job data.');
+            window.location.href = `job-detail.html?id=${id}`;
+          });
         },
 
         init() {
