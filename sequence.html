@@ -132,9 +132,18 @@
             .then(data => {
               if (Array.isArray(data)) {
                 this.sequences = data;
-                // Trigger status polling for any 'loading' items
+
+                // For sequences in 'loading' state, trigger fetch + polling
                 this.sequences.forEach(seq => {
                   if (seq.status === 'loading') {
+                    // Trigger job-sequence-fetch-data immediately
+                    fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: seq.id })
+                    }).catch(() => console.warn(`Failed to trigger fetch-data for ID: ${seq.id}`));
+
+                    // Begin polling for status update
                     this.scheduleStatusCheck(seq.id);
                   }
                 });
@@ -155,6 +164,13 @@
             body: JSON.stringify({ id })
           })
           .then(() => {
+            // Also immediately trigger job-sequence-fetch-data
+            fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id })
+            }).catch(() => console.warn(`Failed to trigger fetch-data for ID: ${id}`));
+
             this.scheduleStatusCheck(id);
           })
           .catch(() => alert('Failed to trigger job fetch'));
@@ -162,7 +178,7 @@
 
         scheduleStatusCheck(id) {
           const interval = setInterval(() => {
-            fetch('https://n8n.sapidblue.in/job-sequence-fetch-data', {
+            fetch('https://n8n.sapidblue.in/webhook-test/job-sequence-fetch-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id })
