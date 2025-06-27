@@ -25,7 +25,9 @@
         <img :src="job.companyLogo" alt="Company Logo" class="object-contain w-full h-full rounded" />
       </div>
       <div class="flex-1 space-y-2">
-        <p><strong>Company:</strong> <a :href="job.companyLinkedinUrl" target="_blank" class="text-blue-600 hover:underline" x-text="job.companyName"></a></p>
+        <p><strong>Company:</strong> 
+          <a :href="job.companyLinkedinUrl" target="_blank" class="text-blue-600 hover:underline" x-text="job.companyName"></a>
+        </p>
         <p><strong>Location:</strong> <span x-text="job.location"></span></p>
         <p><strong>Posted At:</strong> <span x-text="job.postedAt"></span></p>
         <p><strong>Seniority Level:</strong> <span x-text="job.seniorityLevel"></span></p>
@@ -98,7 +100,6 @@
             alert('Missing job id or sequence id');
             return;
           }
-          // Include ids along with the job data to update
           const payload = { ...this.job, id: this.jobId, sequence_id: this.sequenceId };
 
           fetch('https://n8n.sapidblue.in/webhook/edit-data-job', {
