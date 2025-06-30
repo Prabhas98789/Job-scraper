@@ -6,44 +6,54 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="p-6">
-  <h1 class="text-3xl font-bold mb-6">Speaker Stats Dashboard</h1>
+<body class="p-6 max-w-7xl mx-auto">
+  <h1 class="text-3xl font-bold mb-8">📊 Speaker Stats Dashboard</h1>
 
   <!-- Date filter form -->
-  <form id="filterForm" class="mb-6 flex gap-4 flex-wrap items-end">
+  <form id="filterForm" class="mb-8 flex flex-wrap items-end gap-4">
     <div>
-      <label class="block text-sm font-semibold">Start Date</label>
-      <input type="date" id="startDate" name="start_date" class="border px-3 py-1 rounded-md">
+      <label class="block text-sm font-medium mb-1">Start Date</label>
+      <input type="date" id="startDate" name="start_date" class="border px-3 py-2 rounded-md w-48">
     </div>
     <div>
-      <label class="block text-sm font-semibold">End Date</label>
-      <input type="date" id="endDate" name="end_date" class="border px-3 py-1 rounded-md">
+      <label class="block text-sm font-medium mb-1">End Date</label>
+      <input type="date" id="endDate" name="end_date" class="border px-3 py-2 rounded-md w-48">
     </div>
-    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">Apply</button>
+    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700">Apply</button>
   </form>
 
-  <!-- Overview Charts Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <canvas id="wordsChart" class="bg-white rounded shadow p-2"></canvas>
-    <canvas id="fillersChart" class="bg-white rounded shadow p-2"></canvas>
-    <canvas id="contributionChart" class="bg-white rounded shadow p-2"></canvas>
+  <!-- Charts Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+    <div class="bg-white p-4 rounded-lg shadow-md">
+      <h2 class="text-lg font-semibold mb-2">Total Words</h2>
+      <canvas id="wordsChart" height="200"></canvas>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow-md">
+      <h2 class="text-lg font-semibold mb-2">Filler Words</h2>
+      <canvas id="fillersChart" height="200"></canvas>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow-md">
+      <h2 class="text-lg font-semibold mb-2">% Contribution</h2>
+      <canvas id="contributionChart" height="200"></canvas>
+    </div>
   </div>
 
   <!-- Grouped Meeting Table -->
-  <div class="overflow-x-auto">
-    <table class="min-w-full bg-white rounded shadow">
-      <thead class="bg-gray-200">
+  <div class="bg-white rounded-lg shadow-md p-4 overflow-x-auto">
+    <h2 class="text-lg font-semibold mb-4">Meeting Stats</h2>
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-100 border-b">
         <tr>
           <th class="px-4 py-2 text-left">Meeting ID</th>
           <th class="px-4 py-2 text-left">Speaker</th>
           <th class="px-4 py-2 text-left">Email</th>
           <th class="px-4 py-2 text-left">Words</th>
-          <th class="px-4 py-2 text-left">Filler Words</th>
+          <th class="px-4 py-2 text-left">Fillers</th>
           <th class="px-4 py-2 text-left">Contribution %</th>
-          <th class="px-4 py-2">Action</th>
+          <th class="px-4 py-2 text-center">Action</th>
         </tr>
       </thead>
-      <tbody id="meetingTableBody"></tbody>
+      <tbody id="meetingTableBody" class="divide-y divide-gray-200"></tbody>
     </table>
   </div>
 
@@ -65,10 +75,9 @@
       const url = `${API_URL}?start_date=${startDate}&end_date=${endDate}`;
       const res = await fetch(url);
       const data = await res.json();
-
       const speakers = data.filter(x => x.speaker_name);
 
-      // Render charts (aggregate only)
+      // Aggregate stats
       const grouped = speakers.reduce((acc, curr) => {
         const key = curr.speaker_name;
         if (!acc[key]) acc[key] = { total_words: 0, total_fillers: 0, total_contribution: 0, count: 0 };
@@ -84,25 +93,30 @@
       const fillers = labels.map(k => grouped[k].total_fillers);
       const contribution = labels.map(k => (grouped[k].total_contribution / grouped[k].count).toFixed(2));
 
-      const destroyIfExists = (id) => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
+      const destroyIfExists = (id) => {
+        const chart = Chart.getChart(id);
+        if (chart) chart.destroy();
+      };
       destroyIfExists("wordsChart");
       destroyIfExists("fillersChart");
       destroyIfExists("contributionChart");
 
       new Chart(document.getElementById("wordsChart"), {
-        type: 'bar', data: { labels, datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }] }
+        type: 'bar',
+        data: { labels, datasets: [{ label: "Words", data: words, backgroundColor: "#3B82F6" }] }
       });
       new Chart(document.getElementById("fillersChart"), {
-        type: 'bar', data: { labels, datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }] }
+        type: 'bar',
+        data: { labels, datasets: [{ label: "Fillers", data: fillers, backgroundColor: "#EA580C" }] }
       });
       new Chart(document.getElementById("contributionChart"), {
-        type: 'line', data: { labels, datasets: [{ label: "% Contribution", data: contribution, borderColor: "#10B981", fill: false }] }
+        type: 'line',
+        data: { labels, datasets: [{ label: "% Contribution", data: contribution, borderColor: "#10B981", fill: false }] }
       });
 
-      // Render table grouped by meeting_id
+      // Render grouped table
       const tableBody = document.getElementById("meetingTableBody");
       tableBody.innerHTML = "";
-
       const meetings = {};
       speakers.forEach(row => {
         if (!row.meeting_id) return;
@@ -113,15 +127,16 @@
       for (const [meeting_id, entries] of Object.entries(meetings)) {
         entries.forEach((row, index) => {
           const tr = document.createElement("tr");
+          tr.className = "hover:bg-gray-50";
           tr.innerHTML = `
-            <td class="border px-4 py-2">${index === 0 ? meeting_id : ""}</td>
-            <td class="border px-4 py-2">${row.speaker_name}</td>
-            <td class="border px-4 py-2">${row.email}</td>
-            <td class="border px-4 py-2">${row.word_count || row.total_words}</td>
-            <td class="border px-4 py-2">${row.filler_estimate || row.total_fillers}</td>
-            <td class="border px-4 py-2">${row.word_contribution_pct || row.avg_contribution_pct}</td>
-            <td class="border px-4 py-2 text-center">
-              <a href="${MEETING_PAGE}?meeting_id=${meeting_id}" class="text-blue-600 underline">View</a>
+            <td class="px-4 py-2">${index === 0 ? meeting_id : ""}</td>
+            <td class="px-4 py-2">${row.speaker_name}</td>
+            <td class="px-4 py-2">${row.email}</td>
+            <td class="px-4 py-2">${row.word_count || row.total_words}</td>
+            <td class="px-4 py-2">${row.filler_estimate || row.total_fillers}</td>
+            <td class="px-4 py-2">${row.word_contribution_pct || row.avg_contribution_pct}</td>
+            <td class="px-4 py-2 text-center">
+              ${index === 0 ? `<a href="${MEETING_PAGE}?meeting_id=${meeting_id}" class="text-blue-600 hover:underline">View</a>` : ""}
             </td>
           `;
           tableBody.appendChild(tr);
