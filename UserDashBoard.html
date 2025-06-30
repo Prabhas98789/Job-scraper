@@ -6,11 +6,11 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="p-6">
-  <h1 class="text-3xl font-bold mb-6">Speaker Stats Dashboard</h1>
+<body class="p-6 space-y-8">
+  <h1 class="text-3xl font-bold">🧠 Speaker Stats Dashboard</h1>
 
-  <!-- Date filter form -->
-  <form id="filterForm" class="mb-6 flex gap-4 flex-wrap items-end">
+  <!-- Filters -->
+  <form id="filterForm" class="flex flex-wrap gap-4 items-end border-b pb-4">
     <div>
       <label class="block text-sm font-semibold">Start Date</label>
       <input type="date" id="startDate" name="start_date" class="border px-3 py-1 rounded-md">
@@ -23,32 +23,54 @@
   </form>
 
   <!-- Charts -->
-  <canvas id="wordsChart" class="mb-6 max-w-full"></canvas>
-  <canvas id="fillersChart" class="mb-6 max-w-full"></canvas>
-  <canvas id="contributionChart" class="mb-6 max-w-full"></canvas>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <canvas id="wordsChart" height="200"></canvas>
+    <canvas id="fillersChart" height="200"></canvas>
+    <canvas id="contributionChart" height="200"></canvas>
+  </div>
+
+  <!-- Table -->
+  <div>
+    <h2 class="text-xl font-semibold mt-10 mb-2">📅 Meetings Attended</h2>
+    <div class="overflow-x-auto border rounded-md">
+      <table class="min-w-full bg-white text-sm">
+        <thead class="bg-gray-200 text-left">
+          <tr>
+            <th class="px-4 py-2">Meeting ID</th>
+            <th class="px-4 py-2">Speaker</th>
+            <th class="px-4 py-2">Date</th>
+            <th class="px-4 py-2">Words</th>
+            <th class="px-4 py-2">Fillers</th>
+            <th class="px-4 py-2">Contribution %</th>
+          </tr>
+        </thead>
+        <tbody id="meetingsTableBody" class="divide-y">
+          <!-- Dynamic rows go here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <script>
     const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
 
-    // Set default dates (last 30 days)
     function getDefaultDates() {
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - 30);
-
       const format = (d) => d.toISOString().split("T")[0];
-
       document.getElementById("startDate").value = format(start);
       document.getElementById("endDate").value = format(end);
-
       return { startDate: format(start), endDate: format(end) };
     }
 
-    // Fetch and render dashboard
     async function loadDashboard(startDate, endDate) {
       const url = `${API_URL}?start_date=${startDate}&end_date=${endDate}`;
       const response = await fetch(url);
-      const data = await response.json();
+      const result = await response.json();
+
+      const data = result.summary || result; // fallback to old shape
+      const meetings = result.meetings || [];
 
       const labels = data.map(d => d.speaker_name);
       const words = data.map(d => parseInt(d.total_words || 0));
@@ -73,13 +95,6 @@
             data: words,
             backgroundColor: "rgba(59, 130, 246, 0.6)"
           }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            title: { display: true, text: 'Total Words per Speaker' }
-          }
         }
       });
 
@@ -92,13 +107,6 @@
             data: fillers,
             backgroundColor: "rgba(234, 88, 12, 0.6)"
           }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false },
-            title: { display: true, text: 'Filler Words per Speaker' }
-          }
         }
       });
 
@@ -113,23 +121,26 @@
             fill: false,
             tension: 0.3
           }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            title: { display: true, text: '% Word Contribution per Speaker' }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100
-            }
-          }
         }
+      });
+
+      // Render table rows
+      const tbody = document.getElementById("meetingsTableBody");
+      tbody.innerHTML = "";
+      meetings.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-4 py-2">${row.meeting_id}</td>
+          <td class="px-4 py-2">${row.speaker_name}</td>
+          <td class="px-4 py-2">${(row.updated_at || "").split("T")[0]}</td>
+          <td class="px-4 py-2">${row.word_count}</td>
+          <td class="px-4 py-2">${row.filler_estimate}</td>
+          <td class="px-4 py-2">${row.word_contribution_pct}%</td>
+        `;
+        tbody.appendChild(tr);
       });
     }
 
-    // Handle form submit
     document.getElementById("filterForm").addEventListener("submit", (e) => {
       e.preventDefault();
       const startDate = document.getElementById("startDate").value;
@@ -137,7 +148,6 @@
       loadDashboard(startDate, endDate);
     });
 
-    // Load dashboard on first load
     const { startDate, endDate } = getDefaultDates();
     loadDashboard(startDate, endDate);
   </script>
