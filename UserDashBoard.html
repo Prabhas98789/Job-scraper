@@ -2,56 +2,54 @@
 <html lang="en" class="bg-gray-100 text-gray-800">
 <head>
   <meta charset="UTF-8" />
-  <title>Fireflies Dashboard</title>
+  <title>Fireflies Speaker Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     canvas {
-      max-height: 250px !important;
+      max-height: 220px !important;
     }
   </style>
 </head>
-<body class="p-6 space-y-6">
-  <h1 class="text-3xl font-bold mb-4">🔥 Fireflies Speaker Dashboard</h1>
+<body class="p-6 max-w-7xl mx-auto space-y-8">
+  <h1 class="text-3xl font-bold text-center">🔥 Speaker Stats Dashboard</h1>
 
   <!-- Filter -->
-  <form id="filterForm" class="flex flex-wrap gap-4 items-end">
+  <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
     <div>
-      <label class="block text-sm font-semibold">Start Date</label>
+      <label class="block text-sm font-semibold mb-1">Start Date</label>
       <input type="date" id="startDate" class="border px-3 py-1 rounded-md" />
     </div>
     <div>
-      <label class="block text-sm font-semibold">End Date</label>
+      <label class="block text-sm font-semibold mb-1">End Date</label>
       <input type="date" id="endDate" class="border px-3 py-1 rounded-md" />
     </div>
-    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">Apply</button>
+    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md">Apply</button>
   </form>
 
   <!-- Charts -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <div class="bg-white rounded-lg shadow p-4">
-      <h2 class="text-lg font-semibold mb-2">Stacked Words vs Fillers</h2>
-      <canvas id="stackedChart"></canvas>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white p-4 rounded shadow flex flex-col items-center">
+      <h3 class="font-semibold mb-2">Stacked Words</h3>
+      <canvas id="stackedWordsChart" width="300" height="220"></canvas>
     </div>
-    <div class="bg-white rounded-lg shadow p-4">
-      <h2 class="text-lg font-semibold mb-2">% Contribution (Donut)</h2>
-      <canvas id="contributionChart"></canvas>
+    <div class="bg-white p-4 rounded shadow flex flex-col items-center">
+      <h3 class="font-semibold mb-2">Contribution Share</h3>
+      <canvas id="contributionChart" width="300" height="220"></canvas>
     </div>
   </div>
 
-  <!-- Meeting Table -->
-  <div class="bg-white rounded-lg shadow overflow-x-auto p-4">
-    <h2 class="text-lg font-semibold mb-2">Meetings Summary</h2>
-    <table class="min-w-full table-auto">
-      <thead class="bg-gray-200 text-sm">
+  <!-- Meetings Table -->
+  <div class="bg-white p-4 rounded shadow overflow-x-auto">
+    <table class="min-w-full border border-gray-200">
+      <thead class="bg-gray-100">
         <tr>
-          <th class="px-3 py-2 text-left">Meeting ID</th>
-          <th class="px-3 py-2 text-left">Meeting Link</th>
-          <th class="px-3 py-2 text-left">Speakers</th>
-          <th class="px-3 py-2 text-left">Words</th>
-          <th class="px-3 py-2 text-left">Fillers</th>
-          <th class="px-3 py-2 text-left">% Contribution</th>
-          <th class="px-3 py-2 text-left">Action</th>
+          <th class="border px-4 py-2 text-left">Meeting ID</th>
+          <th class="border px-4 py-2 text-left">Speakers</th>
+          <th class="border px-4 py-2 text-left">Words</th>
+          <th class="border px-4 py-2 text-left">Filler Words</th>
+          <th class="border px-4 py-2 text-left">Avg. Contribution %</th>
+          <th class="border px-4 py-2 text-center">Action</th>
         </tr>
       </thead>
       <tbody id="meetingTableBody"></tbody>
@@ -59,128 +57,124 @@
   </div>
 
   <script>
-    const apiBase = "https://n8n.sapidblue.in/webhook";
+    const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
+    const STACKED_URL = "https://n8n.sapidblue.in/webhook/totalinaregion";
+    const MEETING_PAGE = "meeting.html";
 
     function getDefaultDates() {
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - 30);
-      const fmt = (d) => d.toISOString().split("T")[0];
-      document.getElementById("startDate").value = fmt(start);
-      document.getElementById("endDate").value = fmt(end);
-      return { start: fmt(start), end: fmt(end) };
+      const format = d => d.toISOString().split("T")[0];
+      document.getElementById("startDate").value = format(start);
+      document.getElementById("endDate").value = format(end);
+      return { startDate: format(start), endDate: format(end) };
     }
 
-    async function loadData(start, end) {
-      const [totalRes, lifecycleRes] = await Promise.all([
-        fetch(`${apiBase}/totalinaregion?start_date=${start}&end_date=${end}`),
-        fetch(`${apiBase}/metings`)
-      ]);
-      const totalData = await totalRes.json();
-      const lifecycleData = await lifecycleRes.json();
-      renderCharts(totalData);
-      renderMeetingTable(lifecycleData);
-    }
+    async function loadDashboard(startDate, endDate) {
+      const data = await fetch(`${API_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json());
+      const stacked = await fetch(`${STACKED_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json());
 
-    function renderCharts(data) {
-      const labels = data.map(d => d.speaker_name);
-      const words = data.map(d => d.total_words);
-      const fillers = data.map(d => d.total_fillers);
-      const contributions = data.map(d => parseFloat(d.avg_contribution_pct || 0));
+      const speakers = data.filter(x => x.speaker_name);
 
-      const stacked = Chart.getChart("stackedChart");
-      if (stacked) stacked.destroy();
-      new Chart("stackedChart", {
-        type: "bar",
+      // Aggregate for donut chart
+      const grouped = speakers.reduce((acc, curr) => {
+        const name = curr.speaker_name;
+        if (!acc[name]) acc[name] = { contrib: 0 };
+        acc[name].contrib += Number(curr.avg_contribution_pct || curr.word_contribution_pct || 0);
+        return acc;
+      }, {});
+      const labels = Object.keys(grouped);
+      const contributions = labels.map(k => grouped[k].contrib);
+      const total = contributions.reduce((a, b) => a + b, 0);
+      const shares = contributions.map(v => ((v / total) * 100).toFixed(2));
+
+      // Chart: Stacked bar for total vs filler
+      const wordLabels = stacked.map(x => x.speaker_name);
+      const totalWords = stacked.map(x => x.total_words);
+      const fillerWords = stacked.map(x => x.total_fillers);
+
+      const destroy = id => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
+
+      destroy("stackedWordsChart");
+      new Chart(document.getElementById("stackedWordsChart"), {
+        type: 'bar',
         data: {
-          labels,
+          labels: wordLabels,
           datasets: [
-            {
-              label: "Words",
-              data: words,
-              backgroundColor: "#3B82F6"
-            },
-            {
-              label: "Filler Words",
-              data: fillers,
-              backgroundColor: "#F87171"
-            }
+            { label: 'Total Words', data: totalWords, backgroundColor: '#3B82F6' },
+            { label: 'Filler Words', data: fillerWords, backgroundColor: '#F97316' }
           ]
         },
         options: {
-          responsive: true,
-          plugins: { legend: { position: "top" } },
-          scales: {
-            x: { stacked: true },
-            y: { stacked: true }
-          }
+          responsive: false,
+          scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+          plugins: { legend: { position: 'bottom' } }
         }
       });
 
-      const contrib = Chart.getChart("contributionChart");
-      if (contrib) contrib.destroy();
-      new Chart("contributionChart", {
-        type: "doughnut",
+      destroy("contributionChart");
+      new Chart(document.getElementById("contributionChart"), {
+        type: 'doughnut',
         data: {
           labels,
           datasets: [{
-            data: contributions,
-            backgroundColor: ["#34D399", "#60A5FA", "#FBBF24", "#F87171", "#A78BFA"]
+            label: "% Contribution",
+            data: shares,
+            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444", "#8B5CF6"]
           }]
         },
         options: {
-          cutout: "60%",
+          responsive: false,
+          cutout: "65%",
           plugins: {
-            legend: {
-              position: "bottom"
-            }
+            legend: { position: 'bottom' },
+            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}%` } }
           }
         }
       });
-    }
 
-    function renderMeetingTable(data) {
-      const grouped = {};
-      data.forEach(d => {
-        if (!grouped[d.meeting_id]) grouped[d.meeting_id] = [];
-        grouped[d.meeting_id].push(d);
+      // Meeting Table
+      const table = document.getElementById("meetingTableBody");
+      table.innerHTML = "";
+
+      const meetings = {};
+      speakers.forEach(row => {
+        if (!row.meeting_id) return;
+        if (!meetings[row.meeting_id]) {
+          meetings[row.meeting_id] = { speakers: [], words: 0, fillers: 0, contribs: [] };
+        }
+        meetings[row.meeting_id].speakers.push(row.speaker_name);
+        meetings[row.meeting_id].words += +row.word_count || +row.total_words || 0;
+        meetings[row.meeting_id].fillers += +row.filler_estimate || +row.total_fillers || 0;
+        meetings[row.meeting_id].contribs.push(+row.word_contribution_pct || +row.avg_contribution_pct || 0);
       });
 
-      const body = document.getElementById("meetingTableBody");
-      body.innerHTML = "";
-
-      for (const [mid, entries] of Object.entries(grouped)) {
-        const speakerNames = entries.map(e => e.speaker_name).join(", ");
-        const totalWords = entries.map(e => e.word_count || 0).join(", ");
-        const totalFillers = entries.map(e => e.filler_estimate || 0).join(", ");
-        const contribution = entries.map(e => e.word_contribution_pct || 0).join(", ");
-
+      Object.entries(meetings).forEach(([id, m]) => {
         const tr = document.createElement("tr");
-        tr.className = "border-b";
+        const avgC = (m.contribs.reduce((a, b) => a + b, 0) / m.contribs.length).toFixed(2);
         tr.innerHTML = `
-          <td class="px-3 py-2 text-sm font-mono">${mid}</td>
-          <td class="px-3 py-2 text-sm"><a href="meeting.html?meeting_id=${mid}" class="text-blue-600 underline">View</a></td>
-          <td class="px-3 py-2 text-sm">${speakerNames}</td>
-          <td class="px-3 py-2 text-sm">${totalWords}</td>
-          <td class="px-3 py-2 text-sm">${totalFillers}</td>
-          <td class="px-3 py-2 text-sm">${contribution}</td>
-          <td class="px-3 py-2 text-sm">
-            <a href="meeting.html?meeting_id=${mid}" class="bg-blue-500 text-white px-3 py-1 rounded text-xs">Details</a>
-          </td>
-        `;
-        body.appendChild(tr);
-      }
+          <td class="border px-4 py-2 font-mono text-sm bg-gray-50">${id}</td>
+          <td class="border px-4 py-2">${[...new Set(m.speakers)].join(', ')}</td>
+          <td class="border px-4 py-2">${m.words}</td>
+          <td class="border px-4 py-2">${m.fillers}</td>
+          <td class="border px-4 py-2">${avgC}</td>
+          <td class="border px-4 py-2 text-center">
+            <a href="${MEETING_PAGE}?meeting_id=${id}" class="text-blue-600 underline">View</a>
+          </td>`;
+        table.appendChild(tr);
+      });
     }
 
     document.getElementById("filterForm").addEventListener("submit", e => {
       e.preventDefault();
-      const start = document.getElementById("startDate").value;
-      const end = document.getElementById("endDate").value;
-      loadData(start, end);
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      loadDashboard(startDate, endDate);
     });
 
-    const { start, end } = getDefaultDates();
-    loadData(start, end);
+    const { startDate, endDate } = getDefaultDates();
+    loadDashboard(startDate, endDate);
   </script>
 </body>
 </html>
