@@ -127,10 +127,7 @@
         },
 
         viewJob(internalId) {
-          const job = this.jobs.find(j => j.internal_id === internalId);
-          if (!job) return;
-
-          window.location.href = `job-view.html?id=${job.id}&sequence_id=${this.sequenceId}`;
+        window.location.href = `job-view.html?internal_id=${internalId}&sequence_id=${this.sequenceId}`;
         },
 
         downloadExcel() {
