@@ -60,45 +60,56 @@
 
       const speakers = data.filter(x => x.speaker_name);
 
-      // Charts: aggregate stats
+      // Aggregate data for charts
       const grouped = speakers.reduce((acc, curr) => {
         const key = curr.speaker_name;
-        if (!acc[key]) acc[key] = { total_words: 0, total_fillers: 0, total_contribution: 0, count: 0 };
-        acc[key].total_words += Number(curr.word_count || curr.total_words || 0);
-        acc[key].total_fillers += Number(curr.filler_estimate || curr.total_fillers || 0);
-        acc[key].total_contribution += Number(curr.word_contribution_pct || curr.avg_contribution_pct || 0);
-        acc[key].count++;
+        if (!acc[key]) acc[key] = { words: 0, fillers: 0, contribution: 0 };
+        acc[key].words += Number(curr.word_count || curr.total_words || 0);
+        acc[key].fillers += Number(curr.filler_estimate || curr.total_fillers || 0);
+        acc[key].contribution += Number(curr.word_contribution_pct || curr.avg_contribution_pct || 0);
         return acc;
       }, {});
 
       const labels = Object.keys(grouped);
-      const words = labels.map(k => grouped[k].total_words);
-      const fillers = labels.map(k => grouped[k].total_fillers);
-      const contribution = labels.map(k => (grouped[k].total_contribution / grouped[k].count).toFixed(2));
+      const words = labels.map(k => grouped[k].words);
+      const fillers = labels.map(k => grouped[k].fillers);
 
+      const totalContribution = labels.reduce((sum, k) => sum + grouped[k].contribution, 0);
+      const contributionShares = labels.map(k => ((grouped[k].contribution / totalContribution) * 100).toFixed(2));
+
+      // Clear previous charts
       const destroyIfExists = (id) => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
       destroyIfExists("wordsChart");
       destroyIfExists("fillersChart");
       destroyIfExists("contributionChart");
 
+      // Render charts
       new Chart(document.getElementById("wordsChart"), {
         type: 'bar',
         data: { labels, datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }] }
       });
+
       new Chart(document.getElementById("fillersChart"), {
         type: 'bar',
         data: { labels, datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }] }
       });
+
       new Chart(document.getElementById("contributionChart"), {
-        type: 'line',
-        data: { labels, datasets: [{ label: "% Contribution", data: contribution, borderColor: "#10B981", fill: false }] }
+        type: 'pie',
+        data: {
+          labels,
+          datasets: [{
+            label: "% Contribution Share",
+            data: contributionShares,
+            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"]
+          }]
+        }
       });
 
-      // Cards grouped by meeting_id
+      // Render meeting cards
       const container = document.getElementById("meetingStatsGrid");
       container.innerHTML = "";
       const meetings = {};
-
       speakers.forEach(row => {
         if (!row.meeting_id) return;
         if (!meetings[row.meeting_id]) meetings[row.meeting_id] = [];
@@ -107,11 +118,7 @@
 
       for (const [meeting_id, entries] of Object.entries(meetings)) {
         const speakersStats = entries.map(e => {
-          const name = e.speaker_name;
-          const words = e.word_count || e.total_words || 0;
-          const fillers = e.filler_estimate || e.total_fillers || 0;
-          const contribution = e.word_contribution_pct || e.avg_contribution_pct || 0;
-          return `<li class="mb-1">${name}: ${words} words, ${fillers} fillers, ${contribution}%</li>`;
+          return `<li class="mb-1">${e.speaker_name}: ${e.word_count || e.total_words} words, ${e.filler_estimate || e.total_fillers} fillers, ${e.word_contribution_pct || e.avg_contribution_pct}%</li>`;
         }).join("");
 
         const card = document.createElement("div");
