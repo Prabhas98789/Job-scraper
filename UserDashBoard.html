@@ -6,43 +6,56 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="p-6">
-  <h1 class="text-3xl font-bold mb-6">Speaker Stats Dashboard</h1>
+<body class="p-6 max-w-7xl mx-auto">
+  <h1 class="text-3xl font-bold mb-6 text-center">Speaker Stats Dashboard</h1>
 
   <!-- Date filter form -->
-  <form id="filterForm" class="mb-6 flex gap-4 flex-wrap items-end">
+  <form id="filterForm" class="mb-6 flex gap-6 flex-wrap justify-center">
     <div>
-      <label class="block text-sm font-semibold">Start Date</label>
+      <label class="block text-sm font-semibold mb-1">Start Date</label>
       <input type="date" id="startDate" name="start_date" class="border px-3 py-1 rounded-md">
     </div>
     <div>
-      <label class="block text-sm font-semibold">End Date</label>
+      <label class="block text-sm font-semibold mb-1">End Date</label>
       <input type="date" id="endDate" name="end_date" class="border px-3 py-1 rounded-md">
     </div>
-    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">Apply</button>
+    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md self-end">Apply</button>
   </form>
 
-  <!-- Overview Charts -->
+  <!-- Overview Charts Grid -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded shadow p-4 flex flex-col items-center">
-      <h3 class="font-semibold mb-2">Total Words</h3>
-      <canvas id="wordsChart" class="w-full max-w-xs h-48"></canvas>
+      <h3 class="font-semibold mb-3">Total Words</h3>
+      <canvas id="wordsChart" width="300" height="250"></canvas>
     </div>
 
     <div class="bg-white rounded shadow p-4 flex flex-col items-center">
-      <h3 class="font-semibold mb-2">Filler Words</h3>
-      <canvas id="fillersChart" class="w-full max-w-xs h-48"></canvas>
+      <h3 class="font-semibold mb-3">Filler Words</h3>
+      <canvas id="fillersChart" width="300" height="250"></canvas>
     </div>
 
     <div class="bg-white rounded shadow p-4 flex flex-col items-center">
-      <h3 class="font-semibold mb-2">Contribution Share</h3>
-      <canvas id="contributionChart" class="w-full max-w-xs h-48"></canvas>
+      <h3 class="font-semibold mb-3">Contribution Share</h3>
+      <canvas id="contributionChart" width="300" height="250"></canvas>
     </div>
   </div>
 
-  <!-- Meeting Cards Grid -->
-  <h2 class="text-xl font-semibold mb-3">Meeting Stats</h2>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8" id="meetingStatsGrid"></div>
+  <!-- Grouped Meeting Table -->
+  <div class="overflow-x-auto bg-white rounded shadow p-4">
+    <table class="min-w-full border-collapse border border-gray-200">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="border border-gray-300 px-4 py-2 text-left">Meeting ID</th>
+          <th class="border border-gray-300 px-4 py-2 text-left">Speakers</th>
+          <th class="border border-gray-300 px-4 py-2 text-left">Words</th>
+          <th class="border border-gray-300 px-4 py-2 text-left">Filler Words</th>
+          <th class="border border-gray-300 px-4 py-2 text-left">Contribution %</th>
+          <th class="border border-gray-300 px-4 py-2 text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody id="meetingTableBody"></tbody>
+    </table>
+  </div>
 
   <script>
     const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
@@ -63,56 +76,58 @@
       const res = await fetch(url);
       const data = await res.json();
 
+      // Filter speaker data only
       const speakers = data.filter(x => x.speaker_name);
 
-      // Aggregate data for charts
+      // Aggregate stats for charts
       const grouped = speakers.reduce((acc, curr) => {
         const key = curr.speaker_name;
-        if (!acc[key]) acc[key] = { words: 0, fillers: 0, contribution: 0 };
-        acc[key].words += Number(curr.word_count || curr.total_words || 0);
-        acc[key].fillers += Number(curr.filler_estimate || curr.total_fillers || 0);
-        acc[key].contribution += Number(curr.word_contribution_pct || curr.avg_contribution_pct || 0);
+        if (!acc[key]) acc[key] = { total_words: 0, total_fillers: 0, total_contribution: 0, count: 0 };
+        acc[key].total_words += Number(curr.word_count || curr.total_words || 0);
+        acc[key].total_fillers += Number(curr.filler_estimate || curr.total_fillers || 0);
+        acc[key].total_contribution += Number(curr.word_contribution_pct || curr.avg_contribution_pct || 0);
+        acc[key].count++;
         return acc;
       }, {});
 
       const labels = Object.keys(grouped);
-      const words = labels.map(k => grouped[k].words);
-      const fillers = labels.map(k => grouped[k].fillers);
+      const words = labels.map(k => grouped[k].total_words);
+      const fillers = labels.map(k => grouped[k].total_fillers);
+      // For pie/donut chart, contribution shares should sum to 100%
+      const totalContributionSum = labels.reduce((sum, k) => sum + grouped[k].total_contribution, 0);
+      const contributionShares = labels.map(k => (grouped[k].total_contribution / totalContributionSum * 100).toFixed(2));
 
-      const totalContribution = labels.reduce((sum, k) => sum + grouped[k].contribution, 0);
-      const contributionShares = labels.map(k => ((grouped[k].contribution / totalContribution) * 100).toFixed(2));
-
-      // Clear previous charts
       const destroyIfExists = (id) => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
-      destroyIfExists("wordsChart");
-      destroyIfExists("fillersChart");
-      destroyIfExists("contributionChart");
 
-      // Render charts
+      // Bar chart options
+      const barOptions = {
+        responsive: false,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true } },
+        plugins: { legend: { display: false } }
+      };
+
+      destroyIfExists("wordsChart");
       new Chart(document.getElementById("wordsChart"), {
         type: 'bar',
-        data: { labels, datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: { beginAtZero: true, ticks: { stepSize: 500 } }
-          }
-        }
+        data: {
+          labels,
+          datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }]
+        },
+        options: barOptions
       });
 
+      destroyIfExists("fillersChart");
       new Chart(document.getElementById("fillersChart"), {
         type: 'bar',
-        data: { labels, datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: { beginAtZero: true, ticks: { stepSize: 50 } }
-          }
-        }
+        data: {
+          labels,
+          datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }]
+        },
+        options: barOptions
       });
 
+      destroyIfExists("contributionChart");
       new Chart(document.getElementById("contributionChart"), {
         type: 'doughnut',
         data: {
@@ -120,42 +135,62 @@
           datasets: [{
             label: "% Contribution Share",
             data: contributionShares,
-            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"]
+            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444", "#8B5CF6"]
           }]
         },
         options: {
-          responsive: true,
+          responsive: false,
           maintainAspectRatio: false,
           cutout: '70%',
           plugins: {
-            legend: { position: 'bottom' }
+            legend: { position: 'bottom' },
+            tooltip: { callbacks: {
+              label: ctx => `${ctx.label}: ${ctx.parsed}%`
+            }}
           }
         }
       });
 
-      // Render meeting cards
-      const container = document.getElementById("meetingStatsGrid");
-      container.innerHTML = "";
+      // Group meeting data by meeting_id with speakers combined
+      const tableBody = document.getElementById("meetingTableBody");
+      tableBody.innerHTML = "";
+
+      // Group by meeting_id
       const meetings = {};
       speakers.forEach(row => {
         if (!row.meeting_id) return;
-        if (!meetings[row.meeting_id]) meetings[row.meeting_id] = [];
-        meetings[row.meeting_id].push(row);
+        if (!meetings[row.meeting_id]) {
+          meetings[row.meeting_id] = {
+            speakers: [],
+            word_counts: [],
+            filler_counts: [],
+            contributions: []
+          };
+        }
+        meetings[row.meeting_id].speakers.push(row.speaker_name);
+        meetings[row.meeting_id].word_counts.push(Number(row.word_count || row.total_words || 0));
+        meetings[row.meeting_id].filler_counts.push(Number(row.filler_estimate || row.total_fillers || 0));
+        meetings[row.meeting_id].contributions.push(Number(row.word_contribution_pct || row.avg_contribution_pct || 0));
       });
 
-      for (const [meeting_id, entries] of Object.entries(meetings)) {
-        const speakersStats = entries.map(e => {
-          return `<li class="mb-1">${e.speaker_name}: ${e.word_count || e.total_words} words, ${e.filler_estimate || e.total_fillers} fillers, ${e.word_contribution_pct || e.avg_contribution_pct}%</li>`;
-        }).join("");
+      // Render rows
+      for (const [meeting_id, info] of Object.entries(meetings)) {
+        const totalWords = info.word_counts.reduce((a,b) => a + b, 0);
+        const totalFillers = info.filler_counts.reduce((a,b) => a + b, 0);
+        const avgContribution = (info.contributions.reduce((a,b) => a + b, 0) / info.contributions.length).toFixed(2);
 
-        const card = document.createElement("div");
-        card.className = "bg-white rounded shadow p-4";
-        card.innerHTML = `
-          <div class="mb-2 text-xs text-gray-500 font-mono">Meeting ID: <span class="text-black break-all">${meeting_id}</span></div>
-          <ul class="text-sm text-gray-700 mb-2 list-disc list-inside">${speakersStats}</ul>
-          <a href="${MEETING_PAGE}?meeting_id=${meeting_id}" class="text-blue-600 hover:underline text-sm font-medium">View</a>
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="border border-gray-300 px-4 py-2 font-mono text-sm bg-gray-50">${meeting_id}</td>
+          <td class="border border-gray-300 px-4 py-2">${info.speakers.join(", ")}</td>
+          <td class="border border-gray-300 px-4 py-2">${totalWords}</td>
+          <td class="border border-gray-300 px-4 py-2">${totalFillers}</td>
+          <td class="border border-gray-300 px-4 py-2">${avgContribution}</td>
+          <td class="border border-gray-300 px-4 py-2 text-center">
+            <a href="${MEETING_PAGE}?meeting_id=${meeting_id}" class="text-blue-600 underline">View</a>
+          </td>
         `;
-        container.appendChild(card);
+        tableBody.appendChild(tr);
       }
     }
 
