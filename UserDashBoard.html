@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Team Performance Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="p-6 bg-gray-50 text-gray-800">
+  <h1 class="text-2xl font-bold mb-4">Speaker Performance ({{start_date}} to {{end_date}})</h1>
+
+  <canvas id="wordsChart" class="mb-6"></canvas>
+  <canvas id="fillersChart" class="mb-6"></canvas>
+  <canvas id="contributionChart"></canvas>
+
+  <script>
+    const data = {{AGGREGATE_DATA_JSON}};
+
+    const labels = data.map(d => d.speaker_name);
+    const words = data.map(d => d.total_words);
+    const fillers = data.map(d => d.total_fillers);
+    const contribution = data.map(d => parseFloat(d.avg_contribution_pct.toFixed(2)));
+
+    new Chart(document.getElementById("wordsChart"), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: "Total Words",
+          data: words,
+          backgroundColor: "rgba(59, 130, 246, 0.6)"
+        }]
+      }
+    });
+
+    new Chart(document.getElementById("fillersChart"), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: "Filler Words",
+          data: fillers,
+          backgroundColor: "rgba(234, 88, 12, 0.6)"
+        }]
+      }
+    });
+
+    new Chart(document.getElementById("contributionChart"), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: "% Contribution",
+          data: contribution,
+          borderColor: "rgba(16, 185, 129, 0.9)",
+          fill: false
+        }]
+      }
+    });
+  </script>
+</body>
+</html>
