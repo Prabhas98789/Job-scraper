@@ -39,7 +39,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <template x-for="job in filteredJobs" :key="job.id">
+            <template x-for="job in filteredJobs" :key="job.internal_id">
               <tr>
                 <td class="px-4 py-2 whitespace-nowrap text-gray-900" x-text="job.title"></td>
                 <td class="px-4 py-2 whitespace-nowrap text-gray-900 flex items-center gap-2">
@@ -51,11 +51,11 @@
                 <td class="px-4 py-2 whitespace-nowrap text-gray-900" x-text="job.companyEmployeesCount"></td>
                 <td class="px-4 py-2 whitespace-nowrap text-gray-900 space-x-1">
                   <button
-                    @click="viewJob(job.id)"
+                    @click="viewJob(job.internal_id)"
                     class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
                   >View</button>
                   <button
-                    @click="deleteJob(job.id)"
+                    @click="deleteJob(job.internal_id)"
                     class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
                   >Delete</button>
                 </td>
@@ -106,21 +106,31 @@
           .catch(() => alert('Failed to fetch job data.'));
         },
 
-        deleteJob(jobId) {
+        deleteJob(internalId) {
+          const job = this.jobs.find(j => j.internal_id === internalId);
+          if (!job) return;
+
           fetch('https://n8n.sapidblue.in/webhook/Delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: jobId, sequence_id: this.sequenceId })
+            body: JSON.stringify({ id: job.id, sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(resp => {
             if (Array.isArray(resp) && resp[0]?.success) {
-              this.jobs = this.jobs.filter(j => j.id !== jobId);
+              this.jobs = this.jobs.filter(j => j.internal_id !== internalId);
             } else {
               alert('Failed to delete');
             }
           })
           .catch(() => alert('Failed to delete job.'));
+        },
+
+        viewJob(internalId) {
+          const job = this.jobs.find(j => j.internal_id === internalId);
+          if (!job) return;
+
+          window.location.href = `job-view.html?id=${job.id}&sequence_id=${this.sequenceId}`;
         },
 
         downloadExcel() {
@@ -129,10 +139,6 @@
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, 'Jobs');
           XLSX.writeFile(wb, 'job_data.xlsx');
-        },
-
-        viewJob(jobId) {
-          window.location.href = `job-view.html?id=${jobId}&sequence_id=${this.sequenceId}`;
         },
 
         goBack() {
