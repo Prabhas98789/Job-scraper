@@ -51,9 +51,9 @@
       const data = await response.json();
 
       const labels = data.map(d => d.speaker_name);
-      const words = data.map(d => d.total_words);
-      const fillers = data.map(d => d.total_fillers);
-      const contribution = data.map(d => parseFloat(d.avg_contribution_pct.toFixed(2)));
+      const words = data.map(d => parseInt(d.total_words || 0));
+      const fillers = data.map(d => parseInt(d.total_fillers || 0));
+      const contribution = data.map(d => parseFloat(d.avg_contribution_pct || 0).toFixed(2));
 
       const destroyIfExists = (id) => {
         const chart = Chart.getChart(id);
@@ -73,6 +73,13 @@
             data: words,
             backgroundColor: "rgba(59, 130, 246, 0.6)"
           }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Total Words per Speaker' }
+          }
         }
       });
 
@@ -85,6 +92,13 @@
             data: fillers,
             backgroundColor: "rgba(234, 88, 12, 0.6)"
           }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Filler Words per Speaker' }
+          }
         }
       });
 
@@ -96,8 +110,21 @@
             label: "% Contribution",
             data: contribution,
             borderColor: "rgba(16, 185, 129, 0.9)",
-            fill: false
+            fill: false,
+            tension: 0.3
           }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: '% Word Contribution per Speaker' }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100
+            }
+          }
         }
       });
     }
