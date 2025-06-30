@@ -2,55 +2,56 @@
 <html lang="en" class="bg-gray-100 text-gray-800">
 <head>
   <meta charset="UTF-8" />
-  <title>Fireflies Speaker Dashboard</title>
+  <title>Fireflies Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    canvas {
+      max-height: 250px !important;
+    }
+  </style>
 </head>
-<body class="p-6 max-w-7xl mx-auto">
-  <h1 class="text-3xl font-bold mb-6 text-center">Speaker Stats Dashboard</h1>
+<body class="p-6 space-y-6">
+  <h1 class="text-3xl font-bold mb-4">🔥 Fireflies Speaker Dashboard</h1>
 
-  <!-- Date filter form -->
-  <form id="filterForm" class="mb-6 flex gap-6 flex-wrap justify-center">
+  <!-- Filter -->
+  <form id="filterForm" class="flex flex-wrap gap-4 items-end">
     <div>
-      <label class="block text-sm font-semibold mb-1">Start Date</label>
-      <input type="date" id="startDate" name="start_date" class="border px-3 py-1 rounded-md">
+      <label class="block text-sm font-semibold">Start Date</label>
+      <input type="date" id="startDate" class="border px-3 py-1 rounded-md" />
     </div>
     <div>
-      <label class="block text-sm font-semibold mb-1">End Date</label>
-      <input type="date" id="endDate" name="end_date" class="border px-3 py-1 rounded-md">
+      <label class="block text-sm font-semibold">End Date</label>
+      <input type="date" id="endDate" class="border px-3 py-1 rounded-md" />
     </div>
-    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md self-end">Apply</button>
+    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">Apply</button>
   </form>
 
-  <!-- Overview Charts Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-    <div class="bg-white rounded shadow p-4 flex flex-col items-center">
-      <h3 class="font-semibold mb-3">Total Words</h3>
-      <canvas id="wordsChart" width="300" height="250"></canvas>
+  <!-- Charts -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-lg shadow p-4">
+      <h2 class="text-lg font-semibold mb-2">Stacked Words vs Fillers</h2>
+      <canvas id="stackedChart"></canvas>
     </div>
-
-    <div class="bg-white rounded shadow p-4 flex flex-col items-center">
-      <h3 class="font-semibold mb-3">Filler Words</h3>
-      <canvas id="fillersChart" width="300" height="250"></canvas>
-    </div>
-
-    <div class="bg-white rounded shadow p-4 flex flex-col items-center">
-      <h3 class="font-semibold mb-3">Contribution Share</h3>
-      <canvas id="contributionChart" width="300" height="250"></canvas>
+    <div class="bg-white rounded-lg shadow p-4">
+      <h2 class="text-lg font-semibold mb-2">% Contribution (Donut)</h2>
+      <canvas id="contributionChart"></canvas>
     </div>
   </div>
 
-  <!-- Grouped Meeting Table -->
-  <div class="overflow-x-auto bg-white rounded shadow p-4">
-    <table class="min-w-full border-collapse border border-gray-200">
-      <thead class="bg-gray-200">
+  <!-- Meeting Table -->
+  <div class="bg-white rounded-lg shadow overflow-x-auto p-4">
+    <h2 class="text-lg font-semibold mb-2">Meetings Summary</h2>
+    <table class="min-w-full table-auto">
+      <thead class="bg-gray-200 text-sm">
         <tr>
-          <th class="border border-gray-300 px-4 py-2 text-left">Meeting ID</th>
-          <th class="border border-gray-300 px-4 py-2 text-left">Speakers</th>
-          <th class="border border-gray-300 px-4 py-2 text-left">Words</th>
-          <th class="border border-gray-300 px-4 py-2 text-left">Filler Words</th>
-          <th class="border border-gray-300 px-4 py-2 text-left">Contribution %</th>
-          <th class="border border-gray-300 px-4 py-2 text-center">Action</th>
+          <th class="px-3 py-2 text-left">Meeting ID</th>
+          <th class="px-3 py-2 text-left">Meeting Link</th>
+          <th class="px-3 py-2 text-left">Speakers</th>
+          <th class="px-3 py-2 text-left">Words</th>
+          <th class="px-3 py-2 text-left">Fillers</th>
+          <th class="px-3 py-2 text-left">% Contribution</th>
+          <th class="px-3 py-2 text-left">Action</th>
         </tr>
       </thead>
       <tbody id="meetingTableBody"></tbody>
@@ -58,151 +59,128 @@
   </div>
 
   <script>
-    const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
-    const MEETING_PAGE = "meeting.html";
+    const apiBase = "https://n8n.sapidblue.in/webhook";
 
     function getDefaultDates() {
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - 30);
-      const format = (d) => d.toISOString().split("T")[0];
-      document.getElementById("startDate").value = format(start);
-      document.getElementById("endDate").value = format(end);
-      return { startDate: format(start), endDate: format(end) };
+      const fmt = (d) => d.toISOString().split("T")[0];
+      document.getElementById("startDate").value = fmt(start);
+      document.getElementById("endDate").value = fmt(end);
+      return { start: fmt(start), end: fmt(end) };
     }
 
-    async function loadDashboard(startDate, endDate) {
-      const url = `${API_URL}?start_date=${startDate}&end_date=${endDate}`;
-      const res = await fetch(url);
-      const data = await res.json();
+    async function loadData(start, end) {
+      const [totalRes, lifecycleRes] = await Promise.all([
+        fetch(`${apiBase}/totalinaregion?start_date=${start}&end_date=${end}`),
+        fetch(`${apiBase}/metings`)
+      ]);
+      const totalData = await totalRes.json();
+      const lifecycleData = await lifecycleRes.json();
+      renderCharts(totalData);
+      renderMeetingTable(lifecycleData);
+    }
 
-      // Filter speaker data only
-      const speakers = data.filter(x => x.speaker_name);
+    function renderCharts(data) {
+      const labels = data.map(d => d.speaker_name);
+      const words = data.map(d => d.total_words);
+      const fillers = data.map(d => d.total_fillers);
+      const contributions = data.map(d => parseFloat(d.avg_contribution_pct || 0));
 
-      // Aggregate stats for charts
-      const grouped = speakers.reduce((acc, curr) => {
-        const key = curr.speaker_name;
-        if (!acc[key]) acc[key] = { total_words: 0, total_fillers: 0, total_contribution: 0, count: 0 };
-        acc[key].total_words += Number(curr.word_count || curr.total_words || 0);
-        acc[key].total_fillers += Number(curr.filler_estimate || curr.total_fillers || 0);
-        acc[key].total_contribution += Number(curr.word_contribution_pct || curr.avg_contribution_pct || 0);
-        acc[key].count++;
-        return acc;
-      }, {});
-
-      const labels = Object.keys(grouped);
-      const words = labels.map(k => grouped[k].total_words);
-      const fillers = labels.map(k => grouped[k].total_fillers);
-      // For pie/donut chart, contribution shares should sum to 100%
-      const totalContributionSum = labels.reduce((sum, k) => sum + grouped[k].total_contribution, 0);
-      const contributionShares = labels.map(k => (grouped[k].total_contribution / totalContributionSum * 100).toFixed(2));
-
-      const destroyIfExists = (id) => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
-
-      // Bar chart options
-      const barOptions = {
-        responsive: false,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true } },
-        plugins: { legend: { display: false } }
-      };
-
-      destroyIfExists("wordsChart");
-      new Chart(document.getElementById("wordsChart"), {
-        type: 'bar',
+      const stacked = Chart.getChart("stackedChart");
+      if (stacked) stacked.destroy();
+      new Chart("stackedChart", {
+        type: "bar",
         data: {
           labels,
-          datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }]
-        },
-        options: barOptions
-      });
-
-      destroyIfExists("fillersChart");
-      new Chart(document.getElementById("fillersChart"), {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }]
-        },
-        options: barOptions
-      });
-
-      destroyIfExists("contributionChart");
-      new Chart(document.getElementById("contributionChart"), {
-        type: 'doughnut',
-        data: {
-          labels,
-          datasets: [{
-            label: "% Contribution Share",
-            data: contributionShares,
-            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444", "#8B5CF6"]
-          }]
+          datasets: [
+            {
+              label: "Words",
+              data: words,
+              backgroundColor: "#3B82F6"
+            },
+            {
+              label: "Filler Words",
+              data: fillers,
+              backgroundColor: "#F87171"
+            }
+          ]
         },
         options: {
-          responsive: false,
-          maintainAspectRatio: false,
-          cutout: '70%',
-          plugins: {
-            legend: { position: 'bottom' },
-            tooltip: { callbacks: {
-              label: ctx => `${ctx.label}: ${ctx.parsed}%`
-            }}
+          responsive: true,
+          plugins: { legend: { position: "top" } },
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true }
           }
         }
       });
 
-      // Group meeting data by meeting_id with speakers combined
-      const tableBody = document.getElementById("meetingTableBody");
-      tableBody.innerHTML = "";
-
-      // Group by meeting_id
-      const meetings = {};
-      speakers.forEach(row => {
-        if (!row.meeting_id) return;
-        if (!meetings[row.meeting_id]) {
-          meetings[row.meeting_id] = {
-            speakers: [],
-            word_counts: [],
-            filler_counts: [],
-            contributions: []
-          };
+      const contrib = Chart.getChart("contributionChart");
+      if (contrib) contrib.destroy();
+      new Chart("contributionChart", {
+        type: "doughnut",
+        data: {
+          labels,
+          datasets: [{
+            data: contributions,
+            backgroundColor: ["#34D399", "#60A5FA", "#FBBF24", "#F87171", "#A78BFA"]
+          }]
+        },
+        options: {
+          cutout: "60%",
+          plugins: {
+            legend: {
+              position: "bottom"
+            }
+          }
         }
-        meetings[row.meeting_id].speakers.push(row.speaker_name);
-        meetings[row.meeting_id].word_counts.push(Number(row.word_count || row.total_words || 0));
-        meetings[row.meeting_id].filler_counts.push(Number(row.filler_estimate || row.total_fillers || 0));
-        meetings[row.meeting_id].contributions.push(Number(row.word_contribution_pct || row.avg_contribution_pct || 0));
+      });
+    }
+
+    function renderMeetingTable(data) {
+      const grouped = {};
+      data.forEach(d => {
+        if (!grouped[d.meeting_id]) grouped[d.meeting_id] = [];
+        grouped[d.meeting_id].push(d);
       });
 
-      // Render rows
-      for (const [meeting_id, info] of Object.entries(meetings)) {
-        const totalWords = info.word_counts.reduce((a,b) => a + b, 0);
-        const totalFillers = info.filler_counts.reduce((a,b) => a + b, 0);
-        const avgContribution = (info.contributions.reduce((a,b) => a + b, 0) / info.contributions.length).toFixed(2);
+      const body = document.getElementById("meetingTableBody");
+      body.innerHTML = "";
+
+      for (const [mid, entries] of Object.entries(grouped)) {
+        const speakerNames = entries.map(e => e.speaker_name).join(", ");
+        const totalWords = entries.map(e => e.word_count || 0).join(", ");
+        const totalFillers = entries.map(e => e.filler_estimate || 0).join(", ");
+        const contribution = entries.map(e => e.word_contribution_pct || 0).join(", ");
 
         const tr = document.createElement("tr");
+        tr.className = "border-b";
         tr.innerHTML = `
-          <td class="border border-gray-300 px-4 py-2 font-mono text-sm bg-gray-50">${meeting_id}</td>
-          <td class="border border-gray-300 px-4 py-2">${info.speakers.join(", ")}</td>
-          <td class="border border-gray-300 px-4 py-2">${totalWords}</td>
-          <td class="border border-gray-300 px-4 py-2">${totalFillers}</td>
-          <td class="border border-gray-300 px-4 py-2">${avgContribution}</td>
-          <td class="border border-gray-300 px-4 py-2 text-center">
-            <a href="${MEETING_PAGE}?meeting_id=${meeting_id}" class="text-blue-600 underline">View</a>
+          <td class="px-3 py-2 text-sm font-mono">${mid}</td>
+          <td class="px-3 py-2 text-sm"><a href="meeting.html?meeting_id=${mid}" class="text-blue-600 underline">View</a></td>
+          <td class="px-3 py-2 text-sm">${speakerNames}</td>
+          <td class="px-3 py-2 text-sm">${totalWords}</td>
+          <td class="px-3 py-2 text-sm">${totalFillers}</td>
+          <td class="px-3 py-2 text-sm">${contribution}</td>
+          <td class="px-3 py-2 text-sm">
+            <a href="meeting.html?meeting_id=${mid}" class="bg-blue-500 text-white px-3 py-1 rounded text-xs">Details</a>
           </td>
         `;
-        tableBody.appendChild(tr);
+        body.appendChild(tr);
       }
     }
 
-    document.getElementById("filterForm").addEventListener("submit", (e) => {
+    document.getElementById("filterForm").addEventListener("submit", e => {
       e.preventDefault();
-      const startDate = document.getElementById("startDate").value;
-      const endDate = document.getElementById("endDate").value;
-      loadDashboard(startDate, endDate);
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+      loadData(start, end);
     });
 
-    const { startDate, endDate } = getDefaultDates();
-    loadDashboard(startDate, endDate);
+    const { start, end } = getDefaultDates();
+    loadData(start, end);
   </script>
 </body>
 </html>
