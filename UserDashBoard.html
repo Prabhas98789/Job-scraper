@@ -7,28 +7,14 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     canvas {
-      max-height: 240px !important;
-    }
-    .nav-tab.active {
-      background-color: #3B82F6;
-      color: white;
+      max-height: 220px !important;
     }
   </style>
 </head>
-<body class="p-4 max-w-7xl mx-auto space-y-8">
+<body class="p-6 max-w-7xl mx-auto space-y-10">
+  <h1 class="text-3xl font-bold text-center">🔥 Speaker Stats Dashboard</h1>
 
-  <!-- Navigation -->
-  <nav class="flex justify-between items-center bg-white shadow px-6 py-4 rounded">
-    <h1 class="text-2xl font-bold">🔥 Fireflies Team Dashboard</h1>
-    <div class="space-x-3">
-      <button class="nav-tab px-4 py-2 rounded font-semibold" onclick="switchTab('overview')">Overview</button>
-      <button class="nav-tab px-4 py-2 rounded font-semibold" onclick="switchTab('speakers')">Speakers</button>
-      <button class="nav-tab px-4 py-2 rounded font-semibold" onclick="switchTab('meetings')">Meetings</button>
-      <button class="nav-tab px-4 py-2 rounded font-semibold" onclick="switchTab('compliance')">Compliance</button>
-    </div>
-  </nav>
-
-  <!-- Date Filter -->
+  <!-- Filter -->
   <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
     <div>
       <label class="block text-sm font-semibold mb-1">Start Date</label>
@@ -41,99 +27,203 @@
     <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md">Apply</button>
   </form>
 
-  <!-- Overview Tab -->
-  <section id="overview" class="tab-content">
-    <h2 class="text-xl font-bold mb-4">📊 Team Contribution Overview</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-        <h3 class="font-semibold mb-2">Stacked Words</h3>
-        <canvas id="stackedWordsChart"></canvas>
-      </div>
-      <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-        <h3 class="font-semibold mb-2">Contribution Share</h3>
-        <canvas id="contributionChart"></canvas>
-      </div>
-      <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-        <h3 class="font-semibold mb-2">Total Words Over Time</h3>
-        <canvas id="wordTrendChart"></canvas>
-      </div>
-    </div>
-  </section>
-
-  <!-- Speakers Tab -->
-  <section id="speakers" class="tab-content hidden">
-    <h2 class="text-xl font-bold mb-4">🧑‍💼 Speaker Breakdown</h2>
-    <!-- This section can later include avg sentence count, speaking time, etc. -->
-    <p class="text-gray-600">Coming soon: Individual speaker drill-downs and trends</p>
-  </section>
-
-  <!-- Meetings Tab -->
-  <section id="meetings" class="tab-content hidden">
-    <h2 class="text-xl font-bold mb-4">📅 Meeting Logs</h2>
-    <div class="bg-white p-4 rounded shadow overflow-x-auto">
-      <table class="min-w-full border border-gray-200">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border px-4 py-2 text-left">Meeting ID</th>
-            <th class="border px-4 py-2 text-left">Speakers</th>
-            <th class="border px-4 py-2 text-left">Words</th>
-            <th class="border px-4 py-2 text-left">Filler Words</th>
-            <th class="border px-4 py-2 text-left">Avg. Contribution %</th>
-            <th class="border px-4 py-2 text-center">Action</th>
-          </tr>
-        </thead>
-        <tbody id="meetingTableBody"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Compliance Tab -->
-  <section id="compliance" class="tab-content hidden">
-    <h2 class="text-xl font-bold mb-4">✅ Compliance Scores</h2>
-    <p class="text-gray-600 mb-2">Coming soon: Heatmaps & guideline adherence matrix.</p>
-    <!-- Placeholder for future chart -->
+  <!-- Charts Row 1 -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-      <h3 class="font-semibold mb-2">Speaker Compliance Scores</h3>
-      <canvas id="complianceChart"></canvas>
+      <h3 class="font-semibold mb-2">Stacked Words</h3>
+      <canvas id="stackedWordsChart" width="300" height="220"></canvas>
     </div>
-  </section>
+    <div class="bg-white p-4 rounded shadow flex flex-col items-center">
+      <h3 class="font-semibold mb-2">Contribution Share</h3>
+      <canvas id="contributionChart" width="300" height="220"></canvas>
+    </div>
+    <div class="bg-white p-4 rounded shadow flex flex-col items-center">
+      <h3 class="font-semibold mb-2">Compliance Scores</h3>
+      <canvas id="complianceChart" width="300" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="bg-white p-4 rounded shadow flex flex-col items-center">
+    <h3 class="font-semibold mb-2">Word Trend Over Time</h3>
+    <canvas id="wordTrendChart" width="800" height="220"></canvas>
+  </div>
+
+  <!-- Meetings Table -->
+  <div class="bg-white p-4 rounded shadow overflow-x-auto">
+    <h3 class="font-semibold mb-4 text-xl">Meeting Summary</h3>
+    <table class="min-w-full border border-gray-200">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border px-4 py-2 text-left">Meeting ID</th>
+          <th class="border px-4 py-2 text-left">Speakers</th>
+          <th class="border px-4 py-2 text-left">Words</th>
+          <th class="border px-4 py-2 text-left">Filler Words</th>
+          <th class="border px-4 py-2 text-left">Avg. Contribution %</th>
+          <th class="border px-4 py-2 text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody id="meetingTableBody"></tbody>
+    </table>
+  </div>
 
   <script>
-    const tabs = document.querySelectorAll(".nav-tab");
-    const sections = document.querySelectorAll(".tab-content");
+    const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
+    const STACKED_URL = "https://n8n.sapidblue.in/webhook/totalinaregion";
+    const COMPLIANCE_URL = "https://n8n.sapidblue.in/webhook/compliance-scores";
+    const TREND_URL = "https://n8n.sapidblue.in/webhook/word-trend-stats";
+    const MEETING_PAGE = "meeting.html";
 
-    function switchTab(id) {
-      tabs.forEach(tab => tab.classList.remove("active"));
-      sections.forEach(sec => sec.classList.add("hidden"));
-      document.getElementById(id).classList.remove("hidden");
-      event.target.classList.add("active");
+    function getDefaultDates() {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 30);
+      const format = d => d.toISOString().split("T")[0];
+      document.getElementById("startDate").value = format(start);
+      document.getElementById("endDate").value = format(end);
+      return { startDate: format(start), endDate: format(end) };
     }
 
-    // Insert your previous JS code for data loading here
-    // Use Chart.js to populate: stackedWordsChart, contributionChart, wordTrendChart, complianceChart
-    // Populate meeting table same as before
+    async function loadDashboard(startDate, endDate) {
+      const [data, stacked, complianceData, trendData] = await Promise.all([
+        fetch(`${API_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
+        fetch(`${STACKED_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
+        fetch(`${COMPLIANCE_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
+        fetch(`${TREND_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
+      ]);
 
-    // Example only: Chart setup placeholder
-    const ctx = document.getElementById("wordTrendChart").getContext("2d");
-    new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: ["Day 1", "Day 2", "Day 3"],
-        datasets: [{
-          label: "Total Words",
-          data: [2000, 3000, 2500],
-          fill: false,
-          borderColor: "#3B82F6"
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'bottom' }
+      const speakers = data.filter(x => x.speaker_name);
+      const grouped = speakers.reduce((acc, curr) => {
+        const name = curr.speaker_name;
+        if (!acc[name]) acc[name] = { contrib: 0 };
+        acc[name].contrib += Number(curr.avg_contribution_pct || curr.word_contribution_pct || 0);
+        return acc;
+      }, {});
+      const labels = Object.keys(grouped);
+      const contributions = labels.map(k => grouped[k].contrib);
+      const total = contributions.reduce((a, b) => a + b, 0);
+      const shares = contributions.map(v => ((v / total) * 100).toFixed(2));
+
+      const wordLabels = stacked.map(x => x.speaker_name);
+      const totalWords = stacked.map(x => x.total_words);
+      const fillerWords = stacked.map(x => x.total_fillers);
+
+      const destroy = id => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
+
+      destroy("stackedWordsChart");
+      new Chart(document.getElementById("stackedWordsChart"), {
+        type: 'bar',
+        data: {
+          labels: wordLabels,
+          datasets: [
+            { label: 'Total Words', data: totalWords, backgroundColor: '#3B82F6' },
+            { label: 'Filler Words', data: fillerWords, backgroundColor: '#F97316' }
+          ]
+        },
+        options: {
+          responsive: false,
+          scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+          plugins: { legend: { position: 'bottom' } }
         }
-      }
-    });
-  </script>
+      });
 
+      destroy("contributionChart");
+      new Chart(document.getElementById("contributionChart"), {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            label: "% Contribution",
+            data: shares,
+            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444", "#8B5CF6"]
+          }]
+        },
+        options: {
+          responsive: false,
+          cutout: "65%",
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}%` } }
+          }
+        }
+      });
+
+      destroy("complianceChart");
+      new Chart(document.getElementById("complianceChart"), {
+        type: 'bar',
+        data: {
+          labels: complianceData.map(x => x.speaker_name),
+          datasets: [{
+            label: "Compliance Score",
+            data: complianceData.map(x => x.score),
+            backgroundColor: "#10B981"
+          }]
+        },
+        options: {
+          responsive: false,
+          scales: { y: { beginAtZero: true, max: 100 } },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      destroy("wordTrendChart");
+      new Chart(document.getElementById("wordTrendChart"), {
+        type: 'line',
+        data: {
+          labels: trendData.map(x => x.date),
+          datasets: [{
+            label: "Total Words",
+            data: trendData.map(x => x.total_words),
+            borderColor: "#3B82F6",
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: false,
+          plugins: { legend: { position: 'bottom' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      // Meeting Table
+      const table = document.getElementById("meetingTableBody");
+      table.innerHTML = "";
+      const meetings = {};
+      speakers.forEach(row => {
+        if (!row.meeting_id) return;
+        if (!meetings[row.meeting_id]) {
+          meetings[row.meeting_id] = { speakers: [], words: 0, fillers: 0, contribs: [] };
+        }
+        meetings[row.meeting_id].speakers.push(row.speaker_name);
+        meetings[row.meeting_id].words += +row.word_count || +row.total_words || 0;
+        meetings[row.meeting_id].fillers += +row.filler_estimate || +row.total_fillers || 0;
+        meetings[row.meeting_id].contribs.push(+row.word_contribution_pct || +row.avg_contribution_pct || 0);
+      });
+      Object.entries(meetings).forEach(([id, m]) => {
+        const avgC = (m.contribs.reduce((a, b) => a + b, 0) / m.contribs.length).toFixed(2);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="border px-4 py-2 font-mono text-sm bg-gray-50">${id}</td>
+          <td class="border px-4 py-2">${[...new Set(m.speakers)].join(', ')}</td>
+          <td class="border px-4 py-2">${m.words}</td>
+          <td class="border px-4 py-2">${m.fillers}</td>
+          <td class="border px-4 py-2">${avgC}</td>
+          <td class="border px-4 py-2 text-center">
+            <a href="${MEETING_PAGE}?meeting_id=${id}" class="text-blue-600 underline">View</a>
+          </td>`;
+        table.appendChild(tr);
+      });
+    }
+
+    document.getElementById("filterForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      loadDashboard(startDate, endDate);
+    });
+
+    const { startDate, endDate } = getDefaultDates();
+    loadDashboard(startDate, endDate);
+  </script>
 </body>
 </html>
