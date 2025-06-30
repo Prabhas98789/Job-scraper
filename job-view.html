@@ -10,7 +10,6 @@
 <body class="min-h-screen p-6" x-data="jobViewPage()" x-init="fetchJob()">
 
   <div class="max-w-5xl mx-auto bg-white p-8 rounded-xl shadow space-y-6">
-
     <button 
       @click="goBack()" 
       class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
@@ -50,7 +49,6 @@
         class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700"
       >Delete</button>
     </div>
-
   </div>
 
   <script>
@@ -62,22 +60,22 @@
 
         fetchJob() {
           const urlParams = new URLSearchParams(window.location.search);
-          this.jobId = urlParams.get('id');
+          this.jobId = urlParams.get('internal_id'); // using internal_id
           this.sequenceId = urlParams.get('sequence_id');
           if (!this.jobId || !this.sequenceId) {
-            alert('Job id or sequence id missing in URL');
+            alert('Job internal_id or sequence_id missing in URL');
             return;
           }
 
           fetch('https://n8n.sapidblue.in/webhook/view-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: this.jobId, sequence_id: this.sequenceId })
+            body: JSON.stringify({ internal_id: this.jobId, sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(data => {
             const jobData = Array.isArray(data) ? data[0] : data;
-            if (jobData && jobData.id) {
+            if (jobData && jobData.internal_id) {
               this.job = jobData;
             } else {
               alert('Job not found');
@@ -90,7 +88,7 @@
           fetch('https://n8n.sapidblue.in/webhook/Delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: this.jobId, sequence_id: this.sequenceId })
+            body: JSON.stringify({ internal_id: this.jobId, sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(resp => {
