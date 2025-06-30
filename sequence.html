@@ -1,11 +1,27 @@
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-100">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Job Scraper Sequences</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    .loader {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #ffffff;
+      border-right: 2px solid #ffffff;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="p-6" x-data="jobSequences()" x-init="init()">
   <div class="max-w-5xl mx-auto">
@@ -16,8 +32,9 @@
       <button @click="fetchAllSequences" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Reload</button>
     </div>
 
+    <!-- Add New Sequence Form -->
     <template x-if="showForm">
-      <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
         <form @submit.prevent="submitForm" class="bg-white p-6 rounded shadow w-full max-w-md">
           <h2 class="text-lg font-semibold mb-4">New Sequence</h2>
           <div class="mb-3">
@@ -40,6 +57,7 @@
       </div>
     </template>
 
+    <!-- Table -->
     <div class="bg-white shadow rounded overflow-x-auto">
       <table class="w-full text-left">
         <thead class="bg-gray-200">
@@ -71,9 +89,13 @@
                 <template x-if="seq.status !== 'complete'">
                   <button
                     @click="runJob(seq.id)"
-                    class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                    x-html="seq.remainingTime ? `Running... (${Math.floor(seq.remainingTime / 60).toString().padStart(2, '0')}:${(seq.remainingTime % 60).toString().padStart(2, '0')})` : (seq.status === 'loading' ? 'Running...' : 'Run')"
-                  ></button>
+                    class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-2"
+                  >
+                    <template x-if="seq.status === 'running' || seq.status === 'loading'">
+                      <span class="loader"></span>
+                    </template>
+                    <span x-show="!(seq.status === 'running' || seq.status === 'loading')">Run</span>
+                  </button>
                 </template>
               </td>
             </tr>
@@ -109,8 +131,7 @@
                 url: data.url,
                 count: data.count,
                 status: data.status || 'pending',
-                created_at: data.created_at,
-                remainingTime: 0
+                created_at: data.created_at
               });
               this.form = { name: '', url: '', count: 10 };
               this.showForm = false;
@@ -126,28 +147,10 @@
             .then(res => res.json())
             .then(data => {
               if (Array.isArray(data)) {
-                this.sequences = data.map(seq => {
-                  const start = localStorage.getItem(`run_start_${seq.id}`);
-                  if (seq.status === 'running' && start) {
-                    const elapsed = Math.floor((Date.now() - Number(start)) / 1000);
-                    const remaining = Math.max(0, 300 - elapsed);
-                    seq.remainingTime = remaining;
-                    if (remaining > 0) {
-                      const interval = setInterval(() => {
-                        if (seq.remainingTime > 0) {
-                          seq.remainingTime--;
-                        } else {
-                          clearInterval(interval);
-                          localStorage.removeItem(`run_start_${seq.id}`);
-                          this.fetchAllSequences();
-                        }
-                      }, 1000);
-                    }
-                  } else {
-                    seq.remainingTime = 0;
-                  }
-                  return seq;
-                });
+                this.sequences = data.map(seq => ({
+                  ...seq,
+                  remainingTime: 0
+                }));
               }
             })
             .catch(() => alert('Failed to fetch sequences.'));
@@ -163,18 +166,6 @@
             const seq = this.sequences.find(s => s.id === id);
             if (seq) {
               seq.status = 'running';
-              seq.remainingTime = 300;
-              localStorage.setItem(`run_start_${id}`, Date.now());
-
-              const interval = setInterval(() => {
-                if (seq.remainingTime > 0) {
-                  seq.remainingTime--;
-                } else {
-                  clearInterval(interval);
-                  localStorage.removeItem(`run_start_${id}`);
-                  this.fetchAllSequences();
-                }
-              }, 1000);
             }
           })
           .catch(() => alert('Failed to trigger job.'));
