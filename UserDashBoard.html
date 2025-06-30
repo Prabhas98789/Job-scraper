@@ -23,15 +23,20 @@
   </form>
 
   <!-- Overview Charts -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-    <div class="bg-white rounded shadow p-2">
-      <canvas id="wordsChart" class="w-full h-48"></canvas>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded shadow p-4 flex flex-col items-center">
+      <h3 class="font-semibold mb-2">Total Words</h3>
+      <canvas id="wordsChart" class="w-full max-w-xs h-48"></canvas>
     </div>
-    <div class="bg-white rounded shadow p-2">
-      <canvas id="fillersChart" class="w-full h-48"></canvas>
+
+    <div class="bg-white rounded shadow p-4 flex flex-col items-center">
+      <h3 class="font-semibold mb-2">Filler Words</h3>
+      <canvas id="fillersChart" class="w-full max-w-xs h-48"></canvas>
     </div>
-    <div class="bg-white rounded shadow p-2">
-      <canvas id="contributionChart" class="w-full h-48"></canvas>
+
+    <div class="bg-white rounded shadow p-4 flex flex-col items-center">
+      <h3 class="font-semibold mb-2">Contribution Share</h3>
+      <canvas id="contributionChart" class="w-full max-w-xs h-48"></canvas>
     </div>
   </div>
 
@@ -86,16 +91,30 @@
       // Render charts
       new Chart(document.getElementById("wordsChart"), {
         type: 'bar',
-        data: { labels, datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }] }
+        data: { labels, datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 500 } }
+          }
+        }
       });
 
       new Chart(document.getElementById("fillersChart"), {
         type: 'bar',
-        data: { labels, datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }] }
+        data: { labels, datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 50 } }
+          }
+        }
       });
 
       new Chart(document.getElementById("contributionChart"), {
-        type: 'pie',
+        type: 'doughnut',
         data: {
           labels,
           datasets: [{
@@ -103,6 +122,14 @@
             data: contributionShares,
             backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444"]
           }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: { position: 'bottom' }
+          }
         }
       });
 
@@ -124,8 +151,8 @@
         const card = document.createElement("div");
         card.className = "bg-white rounded shadow p-4";
         card.innerHTML = `
-          <div class="mb-2 text-xs text-gray-500 font-mono">Meeting ID: <span class="text-black">${meeting_id}</span></div>
-          <ul class="text-sm text-gray-700 mb-2">${speakersStats}</ul>
+          <div class="mb-2 text-xs text-gray-500 font-mono">Meeting ID: <span class="text-black break-all">${meeting_id}</span></div>
+          <ul class="text-sm text-gray-700 mb-2 list-disc list-inside">${speakersStats}</ul>
           <a href="${MEETING_PAGE}?meeting_id=${meeting_id}" class="text-blue-600 hover:underline text-sm font-medium">View</a>
         `;
         container.appendChild(card);
