@@ -22,33 +22,40 @@
     <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">Apply</button>
   </form>
 
-  <!-- Dashboard Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <div class="bg-white p-4 rounded shadow">
-      <canvas id="wordsChart" class="w-full h-48"></canvas>
-    </div>
-    <div class="bg-white p-4 rounded shadow">
-      <canvas id="fillersChart" class="w-full h-48"></canvas>
-    </div>
-    <div class="bg-white p-4 rounded shadow">
-      <canvas id="contributionChart" class="w-full h-48"></canvas>
-    </div>
+  <!-- Overview Charts Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <canvas id="wordsChart" class="bg-white rounded shadow p-2"></canvas>
+    <canvas id="fillersChart" class="bg-white rounded shadow p-2"></canvas>
+    <canvas id="contributionChart" class="bg-white rounded shadow p-2"></canvas>
   </div>
 
-  <!-- Meeting List -->
-  <div class="mt-6 bg-white p-4 rounded shadow">
-    <h2 class="text-xl font-semibold mb-3">Meetings Attended</h2>
-    <div id="meetingList" class="text-sm space-y-2"></div>
+  <!-- Grouped Meeting Table -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full bg-white rounded shadow">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="px-4 py-2 text-left">Meeting ID</th>
+          <th class="px-4 py-2 text-left">Speaker</th>
+          <th class="px-4 py-2 text-left">Email</th>
+          <th class="px-4 py-2 text-left">Words</th>
+          <th class="px-4 py-2 text-left">Filler Words</th>
+          <th class="px-4 py-2 text-left">Contribution %</th>
+          <th class="px-4 py-2">Action</th>
+        </tr>
+      </thead>
+      <tbody id="meetingTableBody"></tbody>
+    </table>
   </div>
 
   <script>
     const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
+    const MEETING_PAGE = "meeting.html";
 
     function getDefaultDates() {
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - 30);
-      const format = d => d.toISOString().split("T")[0];
+      const format = (d) => d.toISOString().split("T")[0];
       document.getElementById("startDate").value = format(start);
       document.getElementById("endDate").value = format(end);
       return { startDate: format(start), endDate: format(end) };
@@ -56,71 +63,70 @@
 
     async function loadDashboard(startDate, endDate) {
       const url = `${API_URL}?start_date=${startDate}&end_date=${endDate}`;
-      const response = await fetch(url);
-      const data = await response.json();
+      const res = await fetch(url);
+      const data = await res.json();
 
-      const summaryData = data.filter(d => d.meetings_attended !== undefined);
-      const meetingData = data.filter(d => d.meeting_id !== undefined);
+      const speakers = data.filter(x => x.speaker_name);
 
-      const labels = summaryData.map(d => d.speaker_name);
-      const words = summaryData.map(d => d.total_words);
-      const fillers = summaryData.map(d => d.total_fillers);
-      const contribution = summaryData.map(d => parseFloat(d.avg_contribution_pct));
+      // Render charts (aggregate only)
+      const grouped = speakers.reduce((acc, curr) => {
+        const key = curr.speaker_name;
+        if (!acc[key]) acc[key] = { total_words: 0, total_fillers: 0, total_contribution: 0, count: 0 };
+        acc[key].total_words += Number(curr.word_count || curr.total_words || 0);
+        acc[key].total_fillers += Number(curr.filler_estimate || curr.total_fillers || 0);
+        acc[key].total_contribution += Number(curr.word_contribution_pct || curr.avg_contribution_pct || 0);
+        acc[key].count++;
+        return acc;
+      }, {});
 
-      const destroyIfExists = (id) => {
-        const chart = Chart.getChart(id);
-        if (chart) chart.destroy();
-      };
+      const labels = Object.keys(grouped);
+      const words = labels.map(k => grouped[k].total_words);
+      const fillers = labels.map(k => grouped[k].total_fillers);
+      const contribution = labels.map(k => (grouped[k].total_contribution / grouped[k].count).toFixed(2));
 
+      const destroyIfExists = (id) => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
       destroyIfExists("wordsChart");
       destroyIfExists("fillersChart");
       destroyIfExists("contributionChart");
 
       new Chart(document.getElementById("wordsChart"), {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: "Total Words",
-            data: words,
-            backgroundColor: "rgba(59, 130, 246, 0.6)"
-          }]
-        }
+        type: 'bar', data: { labels, datasets: [{ label: "Total Words", data: words, backgroundColor: "#3B82F6" }] }
       });
-
       new Chart(document.getElementById("fillersChart"), {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: "Filler Words",
-            data: fillers,
-            backgroundColor: "rgba(234, 88, 12, 0.6)"
-          }]
-        }
+        type: 'bar', data: { labels, datasets: [{ label: "Filler Words", data: fillers, backgroundColor: "#EA580C" }] }
       });
-
       new Chart(document.getElementById("contributionChart"), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: "% Contribution",
-            data: contribution,
-            borderColor: "rgba(16, 185, 129, 0.9)",
-            fill: false
-          }]
-        }
+        type: 'line', data: { labels, datasets: [{ label: "% Contribution", data: contribution, borderColor: "#10B981", fill: false }] }
       });
 
-      // Render meeting list
-      const listContainer = document.getElementById("meetingList");
-      listContainer.innerHTML = meetingData.map(m => 
-        `<div class="border p-2 rounded">
-          <strong>${m.speaker_name}</strong> (${m.email}) — Meeting: <code>${m.meeting_id}</code><br>
-          Words: ${m.word_count}, Fillers: ${m.filler_estimate}, Contribution: ${m.word_contribution_pct}%
-        </div>`
-      ).join("");
+      // Render table grouped by meeting_id
+      const tableBody = document.getElementById("meetingTableBody");
+      tableBody.innerHTML = "";
+
+      const meetings = {};
+      speakers.forEach(row => {
+        if (!row.meeting_id) return;
+        if (!meetings[row.meeting_id]) meetings[row.meeting_id] = [];
+        meetings[row.meeting_id].push(row);
+      });
+
+      for (const [meeting_id, entries] of Object.entries(meetings)) {
+        entries.forEach((row, index) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="border px-4 py-2">${index === 0 ? meeting_id : ""}</td>
+            <td class="border px-4 py-2">${row.speaker_name}</td>
+            <td class="border px-4 py-2">${row.email}</td>
+            <td class="border px-4 py-2">${row.word_count || row.total_words}</td>
+            <td class="border px-4 py-2">${row.filler_estimate || row.total_fillers}</td>
+            <td class="border px-4 py-2">${row.word_contribution_pct || row.avg_contribution_pct}</td>
+            <td class="border px-4 py-2 text-center">
+              <a href="${MEETING_PAGE}?meeting_id=${meeting_id}" class="text-blue-600 underline">View</a>
+            </td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }
     }
 
     document.getElementById("filterForm").addEventListener("submit", (e) => {
