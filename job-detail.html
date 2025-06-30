@@ -12,12 +12,18 @@
   <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold mb-6">Job Listings</h1>
 
-    <div class="mb-4 flex space-x-4">
+    <div class="mb-4 flex flex-wrap items-center gap-4">
+      <input
+        type="text"
+        placeholder="Search job title or company..."
+        x-model="search"
+        class="px-4 py-2 border rounded w-full sm:w-auto"
+      />
       <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" @click="downloadExcel">Download Excel</button>
       <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700" @click="goBack">Back to Sequences</button>
     </div>
 
-    <template x-if="jobs.length > 0">
+    <template x-if="filteredJobs.length > 0">
       <div class="overflow-x-auto bg-white rounded shadow">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-200">
@@ -31,7 +37,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <template x-for="job in jobs" :key="job.id">
+            <template x-for="job in filteredJobs" :key="job.id">
               <tr>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" x-text="job.title"></td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 flex items-center space-x-2">
@@ -42,16 +48,15 @@
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" x-text="job.postedAt"></td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" x-text="job.companyEmployeesCount"></td>
                 <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 space-x-1">
+                  <!-- View button untouched -->
                   <button
                     @click="viewJob(job.id)"
                     class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
                   >View</button>
+
+                  <!-- New Delete button logic -->
                   <button
-                    @click="saveJob(job)"
-                    class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                  >Save</button>
-                  <button
-                    @click="deleteJob(job)"
+                    @click="deleteJob(job.id)"
                     class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
                   >Delete</button>
                 </td>
@@ -62,7 +67,7 @@
       </div>
     </template>
 
-    <template x-if="jobs.length === 0">
+    <template x-if="filteredJobs.length === 0">
       <p>No job data found for this sequence.</p>
     </template>
   </div>
@@ -71,7 +76,17 @@
     function jobDetailPage() {
       return {
         jobs: [],
+        search: '',
         sequenceId: null,
+
+        get filteredJobs() {
+          if (!this.search.trim()) return this.jobs;
+          const term = this.search.toLowerCase();
+          return this.jobs.filter(job =>
+            job.title?.toLowerCase().includes(term) ||
+            job.companyName?.toLowerCase().includes(term)
+          );
+        },
 
         fetchJobs() {
           const urlParams = new URLSearchParams(window.location.search);
@@ -92,30 +107,19 @@
           .catch(() => alert('Failed to fetch job data.'));
         },
 
-        saveJob(job) {
-          fetch('https://n8n.sapidblue.in/webhook/edit-data-job', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(job)
-          })
-          .then(res => res.json())
-          .then(resp => alert(resp.success ? 'Saved successfully' : 'Failed to save'))
-          .catch(() => alert('Failed to save job.'));
-        },
-
-        deleteJob(job) {
+        deleteJob(jobId) {
           if (!confirm('Are you sure you want to delete this job?')) return;
 
-          fetch('https://n8n.sapidblue.in/webhook/delete-job', {
+          fetch('https://n8n.sapidblue.in/webhook/Delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: job.id, sequence_id: this.sequenceId })
+            body: JSON.stringify({ id: jobId, sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(resp => {
             if (resp.success) {
               alert('Deleted successfully');
-              this.jobs = this.jobs.filter(j => j.id !== job.id);
+              this.jobs = this.jobs.filter(j => j.id !== jobId);
             } else {
               alert('Failed to delete');
             }
@@ -132,12 +136,11 @@
         },
 
         viewJob(jobId) {
-          // Pass both sequence_id and job id as query params
           window.location.href = `job-view.html?id=${jobId}&sequence_id=${this.sequenceId}`;
         },
 
         goBack() {
-          window.location.href = 'sequence.html'; // Update if your sequences page has a different URL
+          window.location.href = 'sequence.html';
         }
       }
     }
