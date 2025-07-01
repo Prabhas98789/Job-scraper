@@ -181,18 +181,36 @@
     const arr = await fetch(endpoints.lifecycle).then(r => r.json());
     const container = document.getElementById('meetingCards');
     container.innerHTML = '';
-    arr.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'p-4 rounded shadow bg-white space-y-2';
-      card.innerHTML = `
-        <h4 class="text-lg font-bold text-blue-700">${item.speaker_name}</h4>
-        <p class="text-sm text-gray-600">Meeting ID: <span class="font-mono">${item.meeting_id}</span></p>
-        <p><strong>Matched:</strong> ${item.matched?.length ? item.matched.join(', ') : 'None'}</p>
-        <p><strong>Unmatched:</strong> ${item.unmatched?.length ? item.unmatched.join(', ') : 'None'}</p>
-        <p><strong>Compliance Score:</strong> <span class="text-green-600 font-semibold">${item.score}</span></p>
-      `;
-      container.appendChild(card);
+
+    const grouped = {};
+    arr.forEach(o => {
+      if (!grouped[o.meeting_id]) grouped[o.meeting_id] = [];
+      const existing = grouped[o.meeting_id].find(e => e.speaker_name === o.speaker_name);
+      if (!existing || o.score < existing.score) {
+        grouped[o.meeting_id] = grouped[o.meeting_id].filter(e => e.speaker_name !== o.speaker_name);
+        grouped[o.meeting_id].push(o);
+      }
     });
+
+    for (const [meetingId, speakers] of Object.entries(grouped)) {
+      const outer = document.createElement('div');
+      outer.className = 'card space-y-3';
+      outer.innerHTML = `<h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>`;
+
+      speakers.forEach(item => {
+        const speakerCard = document.createElement('div');
+        speakerCard.className = 'border p-3 rounded bg-gray-50';
+        speakerCard.innerHTML = `
+          <div class="font-semibold text-blue-700">${item.speaker_name} (${item.email || 'no email'})</div>
+          <div><strong>Compliance Score:</strong> ${item.score}</div>
+          <div><strong>Matched:</strong> ${item.matched?.length ? item.matched.join(', ') : 'None'}</div>
+          <div><strong>Unmatched:</strong> ${item.unmatched?.length ? item.unmatched.join(', ') : 'None'}</div>
+        `;
+        outer.appendChild(speakerCard);
+      });
+
+      container.appendChild(outer);
+    }
   }
 
   function renderChart(el, type, labels, datasets, dsLabels, opts){
