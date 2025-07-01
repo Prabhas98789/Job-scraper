@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-100 text-gray-800">
 <head>
@@ -60,7 +59,8 @@
 
   async function loadData() {
     const res = await fetch(`https://n8n.sapidblue.in/webhook/meeting-detail?meeting_id=${meetingId}`);
-    const { info, speakers, compliance } = await res.json();
+    const data = await res.json();
+    const { info, speakers, compliance } = data[0];
 
     // Title
     document.getElementById("title").textContent = info.title || "Meeting Details";
@@ -68,19 +68,26 @@
     // Meta Section
     const meta = document.getElementById("meta");
     meta.innerHTML = `
-      <div><strong>Date:</strong> ${new Date(+info.date).toLocaleString()}</div>
-      <div><strong>Host:</strong> ${info.host_email}</div>
-      <div><strong>Organizer:</strong> ${info.organizer_email}</div>
-      <div><strong>Participants:</strong> ${info.participants}</div>
-      <div><strong>Transcript:</strong> <a href="${info.transcript_url}" class="text-blue-600 underline" target="_blank">View</a></div>
-      <div><strong>Audio:</strong> <a href="${info.audio_url}" class="text-blue-600 underline" target="_blank">Play</a></div>
+      <div><strong>Date:</strong> ${new Date(info.date * 1000).toLocaleString()}</div>
+      <div><strong>Host:</strong> ${info.host_email || 'N/A'}</div>
+      <div><strong>Organizer:</strong> ${info.organizer_email || 'N/A'}</div>
+      <div><strong>Participants:</strong> ${info.participants || 'N/A'}</div>
+      <div><strong>Transcript:</strong> <a href="${info.transcript_url || '#'}" class="text-blue-600 underline" target="_blank">View</a></div>
+      <div><strong>Audio:</strong> <a href="${info.audio_url || '#'}" class="text-blue-600 underline" target="_blank">Play</a></div>
       <div><strong>Summary:</strong> ${info.short_summary || "N/A"}</div>
       <div><strong>Gist:</strong> ${info.gist || "N/A"}</div>
       <div><strong>Action Items:</strong> ${info.action_items || "N/A"}</div>
     `;
 
-    // Speaker Stats Table
-    document.getElementById("speakerStats").innerHTML = speakers.map(s => `
+    // Deduplicate Speaker Stats
+    const uniqueSpeakers = Object.values(
+      speakers.reduce((acc, s) => {
+        acc[s.email] = s;
+        return acc;
+      }, {})
+    );
+
+    document.getElementById("speakerStats").innerHTML = uniqueSpeakers.map(s => `
       <tr>
         <td class="border px-3 py-1">${s.speaker_name}</td>
         <td class="border px-3 py-1">${s.email}</td>
@@ -105,5 +112,6 @@
 
   loadData();
 </script>
+
 </body>
 </html>
