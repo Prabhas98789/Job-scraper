@@ -1,25 +1,32 @@
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-100">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Skip List Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="p-6">
-
   <h1 class="text-2xl font-bold mb-6">Skip List Dashboard</h1>
 
-  <!-- Tabs -->
-  <div class="mb-4">
-    <button onclick="showTab('check')" class="px-4 py-2 bg-blue-600 text-white rounded mr-2">Check Companies</button>
-    <button onclick="showTab('upload')" class="px-4 py-2 bg-green-600 text-white rounded">Upload Skip List</button>
+  <!-- Tab Buttons -->
+  <div class="mb-6">
+    <button onclick="showTab('add')" class="px-4 py-2 bg-green-600 text-white rounded mr-2">Add to Skip List</button>
+    <button onclick="showTab('check')" class="px-4 py-2 bg-blue-600 text-white rounded">Check Skip List</button>
   </div>
 
-  <!-- Check Tab -->
-  <div id="checkTab" class="hidden">
-    <textarea id="checkInput" class="w-full h-32 p-2 border rounded" placeholder="Paste company names here..."></textarea>
-    <button onclick="submitCheck()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Check</button>
+  <!-- Add to Skip List Tab -->
+  <div id="addTab" class="hidden">
+    <h2 class="text-lg font-semibold mb-2">Add Companies to Skip List</h2>
+    <textarea id="uploadInput" class="w-full h-32 p-2 border rounded" placeholder="Paste company names here..."></textarea>
+    <button onclick="submitUpload()" class="mt-4 px-4 py-2 bg-green-500 text-white rounded">Add</button>
+    <div id="uploadStatus" class="mt-4 text-green-700 font-medium"></div>
+  </div>
 
+  <!-- Check Skip List Tab -->
+  <div id="checkTab" class="hidden">
+    <h2 class="text-lg font-semibold mb-2">Check Companies Against Skip List</h2>
+    <textarea id="checkInput" class="w-full h-32 p-2 border rounded" placeholder="Paste company names to check..."></textarea>
+    <button onclick="submitCheck()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Check</button>
     <table class="table-auto w-full mt-6 border-collapse border" id="checkTable">
       <thead>
         <tr>
@@ -31,56 +38,14 @@
     </table>
   </div>
 
-  <!-- Upload Tab -->
-  <div id="uploadTab" class="hidden">
-    <textarea id="uploadInput" class="w-full h-32 p-2 border rounded" placeholder="Paste list of companies to skip..."></textarea>
-    <button onclick="submitUpload()" class="mt-4 px-4 py-2 bg-green-500 text-white rounded">Add to Skip List</button>
-
-    <div id="uploadStatus" class="mt-4 text-green-700 font-medium"></div>
-  </div>
-
   <script>
-    const checkURL = "https://n8n.sapidblue.in/webhook/dataskiplist";
-    const uploadURL = "https://n8n.sapidblue.in/webhook/addtoskiplist";
-
     function showTab(tab) {
+      document.getElementById('addTab').style.display = tab === 'add' ? 'block' : 'none';
       document.getElementById('checkTab').style.display = tab === 'check' ? 'block' : 'none';
-      document.getElementById('uploadTab').style.display = tab === 'upload' ? 'block' : 'none';
     }
 
-    async function submitCheck() {
-      const input = document.getElementById('checkInput').value.trim().split('\n').map(x => x.trim()).filter(Boolean);
-      const response = await fetch(checkURL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companies: input })
-      });
-      const result = await response.json();
-      const tbody = document.getElementById('checkTableBody');
-      tbody.innerHTML = '';
-      result.forEach(({ name, exists }) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td class="border p-2 ${exists ? 'bg-red-200' : ''}">${name}</td>
-          <td class="border p-2">${exists ? 'Already Exists' : 'New'}</td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
-
-    async function submitUpload() {
-      const input = document.getElementById('uploadInput').value.trim().split('\n').map(x => x.trim()).filter(Boolean);
-      const response = await fetch(uploadURL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companies: input })
-      });
-      const result = await response.json();
-      document.getElementById('uploadStatus').innerText = `Successfully added ${result.added?.length || 0} companies to skip list.`;
-    }
-
-    // Show the default tab
-    showTab('check');
+    // Show default tab
+    showTab('add');
   </script>
 </body>
 </html>
