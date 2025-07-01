@@ -76,6 +76,15 @@
       </div>
       <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
+
+    <!-- Meeting-Specific Cards -->
+    <div class="card col-span-full">
+      <div class="flex justify-between mb-2">
+        <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
+        <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
+      </div>
+      <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
   </div>
 
 <script>
@@ -85,6 +94,7 @@
     filler: 'https://n8n.sapidblue.in/webhook/fillerpercent',
     trend: 'https://n8n.sapidblue.in/webhook/word-trend-stats',
     stacked: 'https://n8n.sapidblue.in/webhook/totalinaregion',
+    lifecycle: 'https://n8n.sapidblue.in/webhook/metings',
   };
   let filters = { start: '', end: '' };
 
@@ -102,6 +112,7 @@
       case 'stacked': loadStacked(); break;
       case 'filler': loadFiller(); break;
       case 'trend': loadTrend(); break;
+      case 'lifecycle': loadLifecycle(); break;
     }
   }
 
@@ -149,23 +160,38 @@
     const arr = await fetch(`${endpoints.trend}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
     const trendContainer = document.getElementById('trendContainer');
     trendContainer.innerHTML = '';
-
     const bySpeaker = {};
     arr.forEach(o => {
       if (!bySpeaker[o.speaker_name]) bySpeaker[o.speaker_name] = [];
       bySpeaker[o.speaker_name].push({meeting_id: o.meeting_id, total_words: +o.total_words});
     });
-
     Object.entries(bySpeaker).forEach(([speaker, data]) => {
       const id = 'trend_' + speaker.replace(/\s+/g,'_');
       const wrapper = document.createElement('div');
       wrapper.className = 'card';
       wrapper.innerHTML = `<h4 class="font-semibold mb-2">${speaker}</h4><canvas id="${id}"></canvas>`;
       trendContainer.appendChild(wrapper);
-
       const labels = data.map(d => d.meeting_id);
       const words = data.map(d => d.total_words);
       renderChart(id, 'line', labels, [words], ['Words'], {});
+    });
+  }
+
+  async function loadLifecycle(){
+    const arr = await fetch(endpoints.lifecycle).then(r => r.json());
+    const container = document.getElementById('meetingCards');
+    container.innerHTML = '';
+    arr.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'p-4 rounded shadow bg-white space-y-2';
+      card.innerHTML = `
+        <h4 class="text-lg font-bold text-blue-700">${item.speaker_name}</h4>
+        <p class="text-sm text-gray-600">Meeting ID: <span class="font-mono">${item.meeting_id}</span></p>
+        <p><strong>Matched:</strong> ${item.matched?.length ? item.matched.join(', ') : 'None'}</p>
+        <p><strong>Unmatched:</strong> ${item.unmatched?.length ? item.unmatched.join(', ') : 'None'}</p>
+        <p><strong>Compliance Score:</strong> <span class="text-green-600 font-semibold">${item.score}</span></p>
+      `;
+      container.appendChild(card);
     });
   }
 
@@ -204,11 +230,11 @@
     e.preventDefault();
     filters.start = document.getElementById('startDate').value;
     filters.end = document.getElementById('endDate').value;
-    ['combined', 'stacked', 'filler', 'trend'].forEach(reload);
+    ['combined', 'stacked', 'filler', 'trend', 'lifecycle'].forEach(reload);
   });
 
   setDefaultDates();
-  ['combined', 'stacked', 'filler', 'trend'].forEach(reload);
+  ['combined', 'stacked', 'filler', 'trend', 'lifecycle'].forEach(reload);
 </script>
 </body>
 </html>
