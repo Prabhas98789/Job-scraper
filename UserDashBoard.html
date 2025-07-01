@@ -5,14 +5,11 @@
   <title>Fireflies Speaker Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    canvas { max-height: 220px !important; }
-  </style>
 </head>
 <body class="p-6 max-w-7xl mx-auto space-y-10">
-  <h1 class="text-3xl font-bold text-center">🔥 Speaker Stats Dashboard</h1>
+  <h1 class="text-3xl font-bold text-center">🔥 Fireflies Speaker Dashboard</h1>
 
-  <!-- Filter -->
+  <!-- Date Filter -->
   <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
     <div>
       <label class="block text-sm font-semibold mb-1">Start Date</label>
@@ -25,43 +22,34 @@
     <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md">Apply</button>
   </form>
 
-  <!-- Charts Row -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-      <h3 class="font-semibold mb-2">Stacked Words</h3>
-      <canvas id="stackedWordsChart"></canvas>
-    </div>
-    <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-      <h3 class="font-semibold mb-2">Contribution Share</h3>
-      <canvas id="contributionChart"></canvas>
-    </div>
-    <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-      <h3 class="font-semibold mb-2">Compliance Scores</h3>
-      <canvas id="complianceChart"></canvas>
-    </div>
+  <!-- Compliance Score Chart -->
+  <div class="bg-white p-4 rounded shadow">
+    <h3 class="font-semibold mb-2 text-center">Compliance Scores (Average per Speaker)</h3>
+    <canvas id="complianceChart" height="200"></canvas>
   </div>
 
-  <!-- Word Trend -->
-  <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-    <h3 class="font-semibold mb-2">Word Trend Over Time</h3>
-    <canvas id="wordTrendChart"></canvas>
+  <!-- Filler Word Table -->
+  <div class="bg-white p-4 rounded shadow overflow-x-auto">
+    <h3 class="font-semibold mb-2">Filler Word Percent Table</h3>
+    <table class="min-w-full border border-gray-300 text-sm">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border px-3 py-2 text-left">Speaker</th>
+          <th class="border px-3 py-2 text-left">Word Count</th>
+          <th class="border px-3 py-2 text-left">Filler Words</th>
+          <th class="border px-3 py-2 text-left">Filler %</th>
+        </tr>
+      </thead>
+      <tbody id="fillerTableBody"></tbody>
+    </table>
   </div>
 
-  <!-- Filler % -->
-  <div class="bg-white p-4 rounded shadow flex flex-col items-center">
-    <h3 class="font-semibold mb-2">Filler Word Percentage</h3>
-    <canvas id="fillerPercentChart"></canvas>
-  </div>
-
-  <!-- Meeting-wise Cards -->
-  <div class="space-y-6" id="meetingCardsContainer"></div>
+  <!-- Meeting-wise Speaker Cards -->
+  <div id="meetingCards" class="space-y-8"></div>
 
   <script>
-    const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
-    const STACKED_URL = "https://n8n.sapidblue.in/webhook/totalinaregion";
     const COMPLIANCE_URL = "https://n8n.sapidblue.in/webhook/compliance-scores";
-    const TREND_URL = "https://n8n.sapidblue.in/webhook/word-trend-stats";
-    const NAMES = ['Awanish', 'Abhishek Kumbhat', 'Nitesh Kumar', 'Mankirat Singh', 'Arunima Singh'];
+    const { startDate, endDate } = getDefaultDates();
 
     function getDefaultDates() {
       const end = new Date();
@@ -74,172 +62,99 @@
     }
 
     async function loadDashboard(startDate, endDate) {
-      const [data, stacked, complianceData, trendData] = await Promise.all([
-        fetch(`${API_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
-        fetch(`${STACKED_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
-        fetch(`${COMPLIANCE_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
-        fetch(`${TREND_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
-      ]);
+      const res = await fetch(`${COMPLIANCE_URL}?start_date=${startDate}&end_date=${endDate}`);
+      const data = await res.json();
 
-      const destroy = id => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
+      // Group by speaker for compliance chart and filler %
+      const speakerStats = {};
+      const meetingMap = {};
 
-      // Group data
-      const filteredSpeakers = data.filter(x => NAMES.includes(x.speaker_name));
-      const grouped = filteredSpeakers.reduce((acc, curr) => {
-        const name = curr.speaker_name;
-        if (!acc[name]) acc[name] = { contrib: 0 };
-        acc[name].contrib += Number(curr.avg_contribution_pct || curr.word_contribution_pct || 0);
-        return acc;
-      }, {});
-      const labels = Object.keys(grouped);
-      const contributions = labels.map(k => grouped[k].contrib);
-      const total = contributions.reduce((a, b) => a + b, 0);
-      const shares = contributions.map(v => ((v / total) * 100).toFixed(2));
-
-      const wordLabels = stacked.map(x => x.speaker_name);
-      const totalWords = stacked.map(x => x.total_words);
-      const fillerWords = stacked.map(x => x.total_fillers);
-
-      // Charts
-      destroy("stackedWordsChart");
-      new Chart(document.getElementById("stackedWordsChart"), {
-        type: 'bar',
-        data: {
-          labels: wordLabels,
-          datasets: [
-            { label: 'Total Words', data: totalWords, backgroundColor: '#3B82F6' },
-            { label: 'Filler Words', data: fillerWords, backgroundColor: '#F97316' }
-          ]
-        },
-        options: {
-          responsive: false,
-          scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
-          plugins: { legend: { position: 'bottom' } }
+      data.forEach(entry => {
+        const speaker = entry.speaker_name;
+        if (!speakerStats[speaker]) {
+          speakerStats[speaker] = { scoreSum: 0, count: 0, filler: 0, words: 0 };
         }
+        speakerStats[speaker].scoreSum += entry.score;
+        speakerStats[speaker].count++;
+        speakerStats[speaker].filler += entry.filler_estimate || 0;
+        speakerStats[speaker].words += entry.word_count || 0;
+
+        // Group by meeting
+        if (!meetingMap[entry.meeting_id]) {
+          meetingMap[entry.meeting_id] = [];
+        }
+        meetingMap[entry.meeting_id].push(entry);
       });
 
-      destroy("contributionChart");
-      new Chart(document.getElementById("contributionChart"), {
-        type: 'doughnut',
+      // Compliance Chart
+      const ctx = document.getElementById("complianceChart").getContext("2d");
+      const speakerLabels = Object.keys(speakerStats);
+      const avgScores = speakerLabels.map(s => (speakerStats[s].scoreSum / speakerStats[s].count).toFixed(1));
+
+      new Chart(ctx, {
+        type: 'bar',
         data: {
-          labels,
+          labels: speakerLabels,
           datasets: [{
-            label: "% Contribution",
-            data: shares,
-            backgroundColor: ["#10B981", "#6366F1", "#F59E0B", "#EF4444", "#8B5CF6"]
+            label: "Avg Compliance Score",
+            data: avgScores,
+            backgroundColor: "#3B82F6"
           }]
         },
         options: {
-          responsive: false,
-          cutout: "65%",
-          plugins: {
-            legend: { position: 'bottom' },
-            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}%` } }
-          }
-        }
-      });
-
-      destroy("complianceChart");
-      new Chart(document.getElementById("complianceChart"), {
-        type: 'bar',
-        data: {
-          labels: complianceData.map(x => x.speaker_name),
-          datasets: [{
-            label: "Compliance Score",
-            data: complianceData.map(x => x.score),
-            backgroundColor: "#10B981"
-          }]
-        },
-        options: {
-          responsive: false,
           scales: { y: { beginAtZero: true, max: 100 } },
           plugins: { legend: { display: false } }
         }
       });
 
-      destroy("wordTrendChart");
-      new Chart(document.getElementById("wordTrendChart"), {
-        type: 'line',
-        data: {
-          labels: trendData.map(x => x.date),
-          datasets: [{
-            label: "Total Words",
-            data: trendData.map(x => x.total_words),
-            borderColor: "#3B82F6",
-            tension: 0.3
-          }]
-        },
-        options: {
-          responsive: false,
-          plugins: { legend: { position: 'bottom' } },
-          scales: { y: { beginAtZero: true } }
-        }
+      // Filler Word Table
+      const fillerTable = document.getElementById("fillerTableBody");
+      fillerTable.innerHTML = "";
+      speakerLabels.forEach(speaker => {
+        const stats = speakerStats[speaker];
+        const percent = stats.words ? ((stats.filler / stats.words) * 100).toFixed(2) : "0.00";
+        const row = `<tr>
+          <td class="border px-3 py-2">${speaker}</td>
+          <td class="border px-3 py-2">${stats.words}</td>
+          <td class="border px-3 py-2">${stats.filler}</td>
+          <td class="border px-3 py-2">${percent}%</td>
+        </tr>`;
+        fillerTable.innerHTML += row;
       });
 
-      // Filler % chart
-      const fillerMap = {};
-      stacked.forEach(row => {
-        const name = row.speaker_name;
-        if (!fillerMap[name]) fillerMap[name] = { words: 0, fillers: 0 };
-        fillerMap[name].words += +row.total_words;
-        fillerMap[name].fillers += +row.total_fillers;
+      // Meeting-wise Cards
+      const cardContainer = document.getElementById("meetingCards");
+      cardContainer.innerHTML = "";
+
+      Object.entries(meetingMap).forEach(([meetingId, speakers]) => {
+        let cardHTML = `<div class="bg-white p-5 rounded shadow">
+          <h3 class="text-lg font-semibold mb-4">Meeting: ${meetingId}</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+
+        const uniqueSpeakers = {};
+
+        speakers.forEach(sp => {
+          const key = sp.speaker_name + sp.email;
+          if (uniqueSpeakers[key]) return;
+          uniqueSpeakers[key] = true;
+
+          const fillerPct = sp.word_count ? ((sp.filler_estimate / sp.word_count) * 100).toFixed(2) : "0.00";
+
+          cardHTML += `<div class="border rounded p-3 bg-gray-50 space-y-1">
+            <div><strong>${sp.speaker_name}</strong></div>
+            <div>Word Count: ${sp.word_count}</div>
+            <div>Filler Words: ${sp.filler_estimate}</div>
+            <div>Filler %: ${fillerPct}%</div>
+            <div>Contribution %: ${sp.word_contribution_pct}</div>
+            <div>Compliance Score: ${sp.score}</div>
+            <div class="text-sm text-green-700">✔️ Matched Topics: ${sp.matched_topics || "N/A"}</div>
+            <div class="text-sm text-red-700">❌ Missed Topics: ${sp.missed_topics || "N/A"}</div>
+          </div>`;
+        });
+
+        cardHTML += `</div></div>`;
+        cardContainer.innerHTML += cardHTML;
       });
-      const fillerLabels = Object.keys(fillerMap);
-      const fillerPercents = fillerLabels.map(name => {
-        const f = fillerMap[name];
-        return f.words ? ((f.fillers / f.words) * 100).toFixed(2) : 0;
-      });
-
-      destroy("fillerPercentChart");
-      new Chart(document.getElementById("fillerPercentChart"), {
-        type: 'bar',
-        data: {
-          labels: fillerLabels,
-          datasets: [{
-            label: "Filler Word %",
-            data: fillerPercents,
-            backgroundColor: "#F59E0B"
-          }]
-        },
-        options: {
-          responsive: false,
-          scales: {
-            y: { beginAtZero: true, max: 100, ticks: { callback: val => `${val}%` } }
-          }
-        }
-      });
-
-      // Generate Meeting Cards
-      const container = document.getElementById("meetingCardsContainer");
-      container.innerHTML = "";
-      const groupedMeetings = {};
-      filteredSpeakers.forEach(s => {
-        if (!groupedMeetings[s.meeting_id]) groupedMeetings[s.meeting_id] = [];
-        groupedMeetings[s.meeting_id].push(s);
-      });
-
-      for (const [meetingId, rows] of Object.entries(groupedMeetings)) {
-        const card = document.createElement("div");
-        card.className = "bg-white rounded shadow p-6";
-
-        const speakerDetails = rows.map(s => {
-          const compliance = complianceData.find(c => c.meeting_id === s.meeting_id && c.speaker_name === s.speaker_name);
-          const fillerPct = s.word_count ? ((s.filler_estimate / s.word_count) * 100).toFixed(2) : 0;
-          const contribPct = s.word_contribution_pct || s.avg_contribution_pct || 0;
-          return `
-            <div class="border-t py-2">
-              <p><strong>${s.speaker_name}</strong></p>
-              <p>Word Count: ${s.word_count}</p>
-              <p>Filler Words: ${s.filler_estimate}</p>
-              <p>Filler %: ${fillerPct}%</p>
-              <p>Contribution %: ${contribPct}%</p>
-              <p>Compliance Score: ${compliance ? compliance.score : "N/A"}</p>
-            </div>`;
-        }).join("");
-
-        card.innerHTML = `<h2 class="text-xl font-semibold mb-2">Meeting: ${meetingId}</h2>${speakerDetails}`;
-        container.appendChild(card);
-      }
     }
 
     document.getElementById("filterForm").addEventListener("submit", e => {
@@ -249,7 +164,6 @@
       loadDashboard(startDate, endDate);
     });
 
-    const { startDate, endDate } = getDefaultDates();
     loadDashboard(startDate, endDate);
   </script>
 </body>
