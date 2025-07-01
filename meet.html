@@ -1,1 +1,109 @@
 
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-100 text-gray-800">
+<head>
+  <meta charset="UTF-8" />
+  <title>Meeting Details</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="max-w-5xl mx-auto p-6 space-y-8">
+
+  <!-- Back Button -->
+  <div>
+    <a href="https://prabhas98789.github.io/Job-scraper/UserDashBoard.html"
+       class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mb-4">
+      ← Back to Dashboard
+    </a>
+  </div>
+
+  <!-- Meeting Title -->
+  <h1 id="title" class="text-3xl font-bold text-center">Loading...</h1>
+
+  <!-- Meeting Info -->
+  <div id="meta" class="bg-white rounded shadow p-4 space-y-2">
+    <!-- Injected via JS -->
+  </div>
+
+  <!-- Speaker Stats Table -->
+  <div class="bg-white rounded shadow p-4">
+    <h2 class="text-xl font-semibold mb-3">📊 Speaker Stats</h2>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm border">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="border px-3 py-2">Speaker</th>
+            <th class="border px-3 py-2">Email</th>
+            <th class="border px-3 py-2">Words</th>
+            <th class="border px-3 py-2">Fillers</th>
+            <th class="border px-3 py-2">Sentences</th>
+            <th class="border px-3 py-2">Contribution %</th>
+          </tr>
+        </thead>
+        <tbody id="speakerStats"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Compliance Scores -->
+  <div class="bg-white rounded shadow p-4">
+    <h2 class="text-xl font-semibold mb-3">✅ Compliance Scores</h2>
+    <div id="complianceData" class="space-y-4"></div>
+  </div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const meetingId = params.get("meeting_id");
+  if (!meetingId) {
+    document.body.innerHTML = "<p class='text-red-600'>No meeting ID provided.</p>";
+    throw new Error("Missing meeting_id");
+  }
+
+  async function loadData() {
+    const res = await fetch(`https://n8n.sapidblue.in/webhook/meeting-detail?meeting_id=${meetingId}`);
+    const { info, speakers, compliance } = await res.json();
+
+    // Title
+    document.getElementById("title").textContent = info.title || "Meeting Details";
+
+    // Meta Section
+    const meta = document.getElementById("meta");
+    meta.innerHTML = `
+      <div><strong>Date:</strong> ${new Date(+info.date).toLocaleString()}</div>
+      <div><strong>Host:</strong> ${info.host_email}</div>
+      <div><strong>Organizer:</strong> ${info.organizer_email}</div>
+      <div><strong>Participants:</strong> ${info.participants}</div>
+      <div><strong>Transcript:</strong> <a href="${info.transcript_url}" class="text-blue-600 underline" target="_blank">View</a></div>
+      <div><strong>Audio:</strong> <a href="${info.audio_url}" class="text-blue-600 underline" target="_blank">Play</a></div>
+      <div><strong>Summary:</strong> ${info.short_summary || "N/A"}</div>
+      <div><strong>Gist:</strong> ${info.gist || "N/A"}</div>
+      <div><strong>Action Items:</strong> ${info.action_items || "N/A"}</div>
+    `;
+
+    // Speaker Stats Table
+    document.getElementById("speakerStats").innerHTML = speakers.map(s => `
+      <tr>
+        <td class="border px-3 py-1">${s.speaker_name}</td>
+        <td class="border px-3 py-1">${s.email}</td>
+        <td class="border px-3 py-1">${s.word_count}</td>
+        <td class="border px-3 py-1">${s.filler_estimate}</td>
+        <td class="border px-3 py-1">${s.sentence_count}</td>
+        <td class="border px-3 py-1">${s.word_contribution_pct}%</td>
+      </tr>
+    `).join("");
+
+    // Compliance Section
+    document.getElementById("complianceData").innerHTML = compliance.map(c => `
+      <div class="border p-4 rounded bg-gray-50">
+        <div class="text-blue-700 font-semibold">${c.speaker_name} (${c.email || 'no email'})</div>
+        <div><strong>Score:</strong> ${c.score}</div>
+        <div><strong>Matched Topics:</strong> ${c.matched_topics || 'None'}</div>
+        <div><strong>Missed Topics:</strong> ${c.missed_topics || 'None'}</div>
+        <div><strong>Summary:</strong> ${c.summary || 'No summary available'}</div>
+      </div>
+    `).join("");
+  }
+
+  loadData();
+</script>
+</body>
+</html>
