@@ -130,14 +130,14 @@
     const filtMap = Object.fromEntries(Object.entries(filtAgg).map(([s, v]) => [s, (v.sum / v.c).toFixed(1)]));
     renderChart('combinedComplianceChart','bar',names,
       [names.map(n=>totMap[n]||0), names.map(n=>filtMap[n]||0)],
-      ['Overall','Filtered'], {max:100});
+      ['Overall','Filtered'], {max:100, colors: ['#3B82F6', '#10B981']});
   }
 
   async function loadStacked(){
     const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
     renderChart('stackedChart','bar', arr.map(o=>o.speaker_name),
       [arr.map(o=>+o.total_words), arr.map(o=>+o.total_fillers)],
-      ['Total','Fillers'],{stacked:true});
+      ['Total','Fillers'],{stacked:true, colors: ['#3B82F6', '#F97316']});
   }
 
   async function loadFiller(){
@@ -181,18 +181,15 @@
     const arr = await fetch(endpoints.lifecycle).then(r => r.json());
     const container = document.getElementById('meetingCards');
     container.innerHTML = '';
-
     const grouped = {};
     arr.forEach(o => {
       if (!grouped[o.meeting_id]) grouped[o.meeting_id] = [];
       grouped[o.meeting_id].push(o);
     });
-
     for (const [meetingId, speakers] of Object.entries(grouped)) {
       const outer = document.createElement('div');
       outer.className = 'card space-y-3';
       outer.innerHTML = `<h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>`;
-
       speakers.forEach(item => {
         const speakerCard = document.createElement('div');
         speakerCard.className = 'border p-3 rounded bg-gray-50';
@@ -206,7 +203,6 @@
         `;
         outer.appendChild(speakerCard);
       });
-
       container.appendChild(outer);
     }
   }
@@ -215,6 +211,8 @@
     const canvas = typeof el === 'string' ? document.getElementById(el) : el;
     const ctx = canvas.getContext('2d');
     if (canvas.chart) canvas.chart.destroy();
+    const defaultColors = ['#3B82F6', '#10B981', '#F97316', '#EF4444'];
+    const colors = opts.colors || defaultColors;
     canvas.chart = new Chart(ctx, {
       type,
       data: {
@@ -222,8 +220,8 @@
         datasets: datasets.map((d, i) => ({
           label: dsLabels[i],
           data: d,
-          backgroundColor: dsLabels[i] === 'Fillers' ? '#F97316' : '#3B82F6',
-          borderColor: '#3B82F6',
+          backgroundColor: colors[i % colors.length],
+          borderColor: colors[i % colors.length],
           tension: 0.3,
           fill: false
         }))
