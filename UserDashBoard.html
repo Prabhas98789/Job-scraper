@@ -6,9 +6,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    canvas {
-      max-height: 220px !important;
-    }
+    canvas { max-height: 220px !important; }
   </style>
 </head>
 <body class="p-6 max-w-7xl mx-auto space-y-10">
@@ -27,39 +25,43 @@
     <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md">Apply</button>
   </form>
 
-  <!-- Charts Row 1 -->
+  <!-- Charts Row -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <div class="bg-white p-4 rounded shadow flex flex-col items-center">
       <h3 class="font-semibold mb-2">Stacked Words</h3>
-      <canvas id="stackedWordsChart" width="300" height="220"></canvas>
+      <canvas id="stackedWordsChart"></canvas>
     </div>
     <div class="bg-white p-4 rounded shadow flex flex-col items-center">
       <h3 class="font-semibold mb-2">Contribution Share</h3>
-      <canvas id="contributionChart" width="300" height="220"></canvas>
+      <canvas id="contributionChart"></canvas>
     </div>
     <div class="bg-white p-4 rounded shadow flex flex-col items-center">
       <h3 class="font-semibold mb-2">Compliance Scores</h3>
-      <canvas id="complianceChart" width="300" height="220"></canvas>
+      <canvas id="complianceChart"></canvas>
     </div>
   </div>
 
-  <!-- Charts Row 2 -->
+  <!-- Word Trend -->
   <div class="bg-white p-4 rounded shadow flex flex-col items-center">
     <h3 class="font-semibold mb-2">Word Trend Over Time</h3>
-    <canvas id="wordTrendChart" width="800" height="220"></canvas>
+    <canvas id="wordTrendChart"></canvas>
   </div>
 
-  <!-- Speaker Summary Cards -->
-  <div class="space-y-6">
-    <h3 class="font-semibold mb-4 text-xl">Speaker Summary</h3>
-    <div id="speakerCards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+  <!-- Filler % -->
+  <div class="bg-white p-4 rounded shadow flex flex-col items-center">
+    <h3 class="font-semibold mb-2">Filler Word Percentage</h3>
+    <canvas id="fillerPercentChart"></canvas>
   </div>
+
+  <!-- Meeting-wise Cards -->
+  <div class="space-y-6" id="meetingCardsContainer"></div>
 
   <script>
     const API_URL = "https://n8n.sapidblue.in/webhook/FirelfiesDashbaord";
     const STACKED_URL = "https://n8n.sapidblue.in/webhook/totalinaregion";
     const COMPLIANCE_URL = "https://n8n.sapidblue.in/webhook/compliance-scores";
     const TREND_URL = "https://n8n.sapidblue.in/webhook/word-trend-stats";
+    const NAMES = ['Awanish', 'Abhishek Kumbhat', 'Nitesh Kumar', 'Mankirat Singh', 'Arunima Singh'];
 
     function getDefaultDates() {
       const end = new Date();
@@ -79,9 +81,11 @@
         fetch(`${TREND_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json()),
       ]);
 
-      const speakers = data.filter(x => x.speaker_name);
+      const destroy = id => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
 
-      const grouped = speakers.reduce((acc, curr) => {
+      // Group data
+      const filteredSpeakers = data.filter(x => NAMES.includes(x.speaker_name));
+      const grouped = filteredSpeakers.reduce((acc, curr) => {
         const name = curr.speaker_name;
         if (!acc[name]) acc[name] = { contrib: 0 };
         acc[name].contrib += Number(curr.avg_contribution_pct || curr.word_contribution_pct || 0);
@@ -96,8 +100,7 @@
       const totalWords = stacked.map(x => x.total_words);
       const fillerWords = stacked.map(x => x.total_fillers);
 
-      const destroy = id => { const chart = Chart.getChart(id); if (chart) chart.destroy(); };
-
+      // Charts
       destroy("stackedWordsChart");
       new Chart(document.getElementById("stackedWordsChart"), {
         type: 'bar',
@@ -173,58 +176,70 @@
         }
       });
 
-      // Speaker Summary Cards
-      const cardWrapper = document.getElementById("speakerCards");
-      cardWrapper.innerHTML = "";
-
-      const speakerMap = {};
-
-      speakers.forEach(row => {
+      // Filler % chart
+      const fillerMap = {};
+      stacked.forEach(row => {
         const name = row.speaker_name;
-        if (!speakerMap[name]) {
-          speakerMap[name] = {
-            name,
-            word_count: 0,
-            filler_estimate: 0,
-            contribs: [],
-          };
+        if (!fillerMap[name]) fillerMap[name] = { words: 0, fillers: 0 };
+        fillerMap[name].words += +row.total_words;
+        fillerMap[name].fillers += +row.total_fillers;
+      });
+      const fillerLabels = Object.keys(fillerMap);
+      const fillerPercents = fillerLabels.map(name => {
+        const f = fillerMap[name];
+        return f.words ? ((f.fillers / f.words) * 100).toFixed(2) : 0;
+      });
+
+      destroy("fillerPercentChart");
+      new Chart(document.getElementById("fillerPercentChart"), {
+        type: 'bar',
+        data: {
+          labels: fillerLabels,
+          datasets: [{
+            label: "Filler Word %",
+            data: fillerPercents,
+            backgroundColor: "#F59E0B"
+          }]
+        },
+        options: {
+          responsive: false,
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { callback: val => `${val}%` } }
+          }
         }
-        speakerMap[name].word_count += +row.word_count || 0;
-        speakerMap[name].filler_estimate += +row.filler_estimate || 0;
-        speakerMap[name].contribs.push(+row.word_contribution_pct || 0);
       });
 
-      complianceData.forEach(row => {
-        if (!speakerMap[row.speaker_name]) return;
-        speakerMap[row.speaker_name].compliance = {
-          score: row.score,
-          matched: row.matched_topics,
-          missed: row.missed_topics,
-        };
+      // Generate Meeting Cards
+      const container = document.getElementById("meetingCardsContainer");
+      container.innerHTML = "";
+      const groupedMeetings = {};
+      filteredSpeakers.forEach(s => {
+        if (!groupedMeetings[s.meeting_id]) groupedMeetings[s.meeting_id] = [];
+        groupedMeetings[s.meeting_id].push(s);
       });
 
-      Object.values(speakerMap).forEach(speaker => {
-        const avgContrib = (
-          speaker.contribs.reduce((a, b) => a + b, 0) / speaker.contribs.length
-        ).toFixed(2);
+      for (const [meetingId, rows] of Object.entries(groupedMeetings)) {
+        const card = document.createElement("div");
+        card.className = "bg-white rounded shadow p-6";
 
-        const compliance = speaker.compliance || {};
+        const speakerDetails = rows.map(s => {
+          const compliance = complianceData.find(c => c.meeting_id === s.meeting_id && c.speaker_name === s.speaker_name);
+          const fillerPct = s.word_count ? ((s.filler_estimate / s.word_count) * 100).toFixed(2) : 0;
+          const contribPct = s.word_contribution_pct || s.avg_contribution_pct || 0;
+          return `
+            <div class="border-t py-2">
+              <p><strong>${s.speaker_name}</strong></p>
+              <p>Word Count: ${s.word_count}</p>
+              <p>Filler Words: ${s.filler_estimate}</p>
+              <p>Filler %: ${fillerPct}%</p>
+              <p>Contribution %: ${contribPct}%</p>
+              <p>Compliance Score: ${compliance ? compliance.score : "N/A"}</p>
+            </div>`;
+        }).join("");
 
-        const div = document.createElement("div");
-        div.className = "bg-white rounded shadow p-4 space-y-2";
-
-        div.innerHTML = `
-          <h4 class="text-lg font-bold">${speaker.name}</h4>
-          <p><strong>Total Words:</strong> ${speaker.word_count}</p>
-          <p><strong>Filler Words:</strong> ${speaker.filler_estimate}</p>
-          <p><strong>Avg. Contribution:</strong> ${avgContrib}%</p>
-          <p><strong>Compliance Score:</strong> ${compliance.score ?? 'N/A'}</p>
-          <p><strong>Matched Topics:</strong> ${compliance.matched ?? '–'}</p>
-          <p><strong>Missed Topics:</strong> ${compliance.missed ?? '–'}</p>
-        `;
-
-        cardWrapper.appendChild(div);
-      });
+        card.innerHTML = `<h2 class="text-xl font-semibold mb-2">Meeting: ${meetingId}</h2>${speakerDetails}`;
+        container.appendChild(card);
+      }
     }
 
     document.getElementById("filterForm").addEventListener("submit", e => {
