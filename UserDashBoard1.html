@@ -97,6 +97,7 @@
     stacked: 'https://n8n.sapidblue.in/webhook/totalinaregion',
     lifecycle: 'https://n8n.sapidblue.in/webhook/metings',
   };
+
   let filters = { start: '', end: '' };
 
   function setDefaultDates(){
@@ -131,8 +132,9 @@
 
     arr.forEach(o => {
       const speakerKey = o.email || o.speaker_name;
-      const meetingDate = new Date(o.date || o.timestamp || o.created_at || o.updated_at || Date.now());
-      const inRange = meetingDate >= startDate && meetingDate <= endDate;
+      const rawDate = o.date || o.timestamp || o.created_at || o.updated_at || null;
+      const meetingDate = rawDate ? new Date(rawDate) : null;
+      const inRange = meetingDate && meetingDate >= startDate && meetingDate <= endDate;
 
       if (!speakerMeetingMap[speakerKey]) speakerMeetingMap[speakerKey] = new Set();
       speakerMeetingMap[speakerKey].add(o.meeting_id);
@@ -158,6 +160,7 @@
           <a href="https://prabhas98789.github.io/Job-scraper/meet.html?meeting_id=${meetingId}" target="_blank"
              class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded">View</a>
         </div>`;
+
       speakers.forEach(item => {
         const speakerKey = item.email || item.speaker_name;
         const totalMeetings = speakerMeetingMap[speakerKey]?.size || 0;
@@ -177,14 +180,16 @@
         `;
         outer.appendChild(speakerCard);
       });
+
       container.appendChild(outer);
     }
   }
 
-  async function loadCombined(){ /* unchanged */ const tot = await fetch(endpoints.combined).then(r=>r.json());
-    const filt = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
-    const names = [...new Set([...tot.map(o=>o.speaker_name), ...filt.map(o=>o.speaker_name)])];
-    const totMap = Object.fromEntries(tot.map(o=>[o.speaker_name, o.avg_compliance_score]));
+  async function loadCombined(){
+    const tot = await fetch(endpoints.combined).then(r => r.json());
+    const filt = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+    const names = [...new Set([...tot.map(o => o.speaker_name), ...filt.map(o => o.speaker_name)])];
+    const totMap = Object.fromEntries(tot.map(o => [o.speaker_name, o.avg_compliance_score]));
     const filtAgg = {};
     filt.forEach(o => {
       if (!filtAgg[o.speaker_name]) filtAgg[o.speaker_name] = {sum: 0, c: 0};
@@ -192,12 +197,16 @@
       filtAgg[o.speaker_name].c++;
     });
     const filtMap = Object.fromEntries(Object.entries(filtAgg).map(([s, v]) => [s, (v.sum / v.c).toFixed(1)]));
-    renderChart('combinedComplianceChart','bar',names,[names.map(n=>totMap[n]||0), names.map(n=>filtMap[n]||0)],['Overall','Filtered'], {max:100, colors: ['#3B82F6', '#10B981']}); }
+    renderChart('combinedComplianceChart', 'bar', names, [names.map(n => totMap[n] || 0), names.map(n => filtMap[n] || 0)], ['Overall', 'Filtered'], {max: 100, colors: ['#3B82F6', '#10B981']});
+  }
 
-  async function loadStacked(){ /* unchanged */ const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
-    renderChart('stackedChart','bar', arr.map(o=>o.speaker_name),[arr.map(o=>+o.total_words), arr.map(o=>+o.total_fillers)],['Total','Fillers'],{stacked:true, colors: ['#3B82F6', '#F97316']}); }
+  async function loadStacked(){
+    const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+    renderChart('stackedChart', 'bar', arr.map(o => o.speaker_name), [arr.map(o => +o.total_words), arr.map(o => +o.total_fillers)], ['Total', 'Fillers'], {stacked: true, colors: ['#3B82F6', '#F97316']});
+  }
 
-  async function loadFiller(){ /* unchanged */ const arr = await fetch(`${endpoints.filler}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+  async function loadFiller(){
+    const arr = await fetch(`${endpoints.filler}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
     document.getElementById('fillerBody').innerHTML = arr.map(o => {
       const percent = o.total_words && o.total_words !== "0" ? ((+o.total_fillers / +o.total_words) * 100).toFixed(2) : "0.00";
       return `<tr>
@@ -206,9 +215,12 @@
         <td class="border px-3 py-1">${o.total_fillers}</td>
         <td class="border px-3 py-1">${percent}%</td>
         <td class="border px-3 py-1">${(+o.avg_score).toFixed(1)}</td>
-      </tr>`; }).join(''); }
+      </tr>`;
+    }).join('');
+  }
 
-  async function loadTrend(){ /* unchanged */ const arr = await fetch(`${endpoints.trend}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
+  async function loadTrend(){
+    const arr = await fetch(`${endpoints.trend}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
     const trendContainer = document.getElementById('trendContainer');
     trendContainer.innerHTML = '';
     const bySpeaker = {};
@@ -217,14 +229,16 @@
       bySpeaker[o.speaker_name].push({meeting_id: o.meeting_id, total_words: +o.total_words});
     });
     Object.entries(bySpeaker).forEach(([speaker, data]) => {
-      const id = 'trend_' + speaker.replace(/\s+/g,'_');
+      const id = 'trend_' + speaker.replace(/\s+/g, '_');
       const wrapper = document.createElement('div');
       wrapper.className = 'card';
       wrapper.innerHTML = `<h4 class="font-semibold mb-2">${speaker}</h4><canvas id="${id}"></canvas>`;
       trendContainer.appendChild(wrapper);
       const labels = data.map(d => d.meeting_id);
       const words = data.map(d => d.total_words);
-      renderChart(id, 'line', labels, [words], ['Words'], {}); }); }
+      renderChart(id, 'line', labels, [words], ['Words'], {});
+    });
+  }
 
   function renderChart(el, type, labels, datasets, dsLabels, opts){
     const canvas = typeof el === 'string' ? document.getElementById(el) : el;
@@ -249,10 +263,10 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: opts.stacked ? { stacked: true } : {},
-          y: opts.stacked ? { stacked: true, beginAtZero: true } : { beginAtZero: true, max: opts.max || undefined }
+          x: opts.stacked ? {stacked: true} : {},
+          y: opts.stacked ? {stacked: true, beginAtZero: true} : {beginAtZero: true, max: opts.max || undefined}
         },
-        plugins: { legend: { position: 'bottom' } }
+        plugins: {legend: {position: 'bottom'}}
       }
     });
   }
