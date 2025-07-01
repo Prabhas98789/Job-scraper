@@ -1,71 +1,86 @@
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-100">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Skip List Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="p-6">
-  <h1 class="text-xl font-bold mb-4">Skip List Checker</h1>
 
-  <textarea id="dataInput" class="w-full h-32 p-2 border rounded" placeholder="Paste company names, one per line..."></textarea>
-  <button onclick="submitData()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Check Data</button>
+  <h1 class="text-2xl font-bold mb-6">Skip List Dashboard</h1>
 
-  <table class="table-auto w-full mt-6 border-collapse border" id="resultsTable">
-    <thead>
-      <tr>
-        <th class="border p-2">Company Name</th>
-        <th class="border p-2">Status</th>
-        <th class="border p-2">Action</th>
-      </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+  <!-- Tabs -->
+  <div class="mb-4">
+    <button onclick="showTab('check')" class="px-4 py-2 bg-blue-600 text-white rounded mr-2">Check Companies</button>
+    <button onclick="showTab('upload')" class="px-4 py-2 bg-green-600 text-white rounded">Upload Skip List</button>
+  </div>
+
+  <!-- Check Tab -->
+  <div id="checkTab" class="hidden">
+    <textarea id="checkInput" class="w-full h-32 p-2 border rounded" placeholder="Paste company names here..."></textarea>
+    <button onclick="submitCheck()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Check</button>
+
+    <table class="table-auto w-full mt-6 border-collapse border" id="checkTable">
+      <thead>
+        <tr>
+          <th class="border p-2">Company Name</th>
+          <th class="border p-2">Status</th>
+        </tr>
+      </thead>
+      <tbody id="checkTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Upload Tab -->
+  <div id="uploadTab" class="hidden">
+    <textarea id="uploadInput" class="w-full h-32 p-2 border rounded" placeholder="Paste list of companies to skip..."></textarea>
+    <button onclick="submitUpload()" class="mt-4 px-4 py-2 bg-green-500 text-white rounded">Add to Skip List</button>
+
+    <div id="uploadStatus" class="mt-4 text-green-700 font-medium"></div>
+  </div>
 
   <script>
     const checkURL = "https://n8n.sapidblue.in/webhook/dataskiplist";
-    const skipURL = "https://n8n.sapidblue.in/webhook/addtoskiplist"; // change if needed
+    const uploadURL = "https://n8n.sapidblue.in/webhook/addtoskiplist";
 
-    async function submitData() {
-      const inputText = document.getElementById('dataInput').value;
-      const rows = inputText.trim().split('\n').map(line => line.trim()).filter(Boolean);
+    function showTab(tab) {
+      document.getElementById('checkTab').style.display = tab === 'check' ? 'block' : 'none';
+      document.getElementById('uploadTab').style.display = tab === 'upload' ? 'block' : 'none';
+    }
 
+    async function submitCheck() {
+      const input = document.getElementById('checkInput').value.trim().split('\n').map(x => x.trim()).filter(Boolean);
       const response = await fetch(checkURL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companies: rows })
+        body: JSON.stringify({ companies: input })
       });
-
       const result = await response.json();
-      const tableBody = document.getElementById('tableBody');
-      tableBody.innerHTML = '';
-
+      const tbody = document.getElementById('checkTableBody');
+      tbody.innerHTML = '';
       result.forEach(({ name, exists }) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
+        const row = document.createElement('tr');
+        row.innerHTML = `
           <td class="border p-2 ${exists ? 'bg-red-200' : ''}">${name}</td>
-          <td class="border p-2">${exists ? 'Matched' : 'New'}</td>
-          <td class="border p-2">
-            <button onclick="skipCompany('${name}')" class="px-3 py-1 rounded bg-yellow-500 text-white">Skip</button>
-          </td>
+          <td class="border p-2">${exists ? 'Already Exists' : 'New'}</td>
         `;
-        tableBody.appendChild(tr);
+        tbody.appendChild(row);
       });
     }
 
-    async function skipCompany(name) {
-      const res = await fetch(skipURL, {
+    async function submitUpload() {
+      const input = document.getElementById('uploadInput').value.trim().split('\n').map(x => x.trim()).filter(Boolean);
+      const response = await fetch(uploadURL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ companies: input })
       });
-      if (res.ok) {
-        alert(`${name} added to skip list.`);
-        submitData(); // Refresh the table
-      } else {
-        alert(`Failed to skip ${name}.`);
-      }
+      const result = await response.json();
+      document.getElementById('uploadStatus').innerText = `Successfully added ${result.added?.length || 0} companies to skip list.`;
     }
+
+    // Show the default tab
+    showTab('check');
   </script>
 </body>
 </html>
