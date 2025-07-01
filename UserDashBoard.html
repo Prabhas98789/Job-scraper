@@ -9,6 +9,9 @@
 <body class="p-6 max-w-7xl mx-auto space-y-10">
   <h1 class="text-3xl font-bold text-center">🔥 Fireflies Speaker Dashboard</h1>
 
+  <!-- Individual User Cards (Overall Stats) -->
+  <div id="userCards" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+
   <!-- Date Filter -->
   <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
     <div>
@@ -22,34 +25,22 @@
     <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-md">Apply</button>
   </form>
 
-  <!-- Compliance Score Chart -->
-  <div class="bg-white p-4 rounded shadow">
-    <h3 class="font-semibold mb-2 text-center">Compliance Scores (Average per Speaker)</h3>
-    <canvas id="complianceChart" height="200"></canvas>
+  <!-- Compliance Charts -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white p-4 rounded shadow">
+      <h3 class="font-semibold mb-2 text-center">Compliance Scores (Date Range)</h3>
+      <canvas id="complianceChart" height="200"></canvas>
+    </div>
+    <div class="bg-white p-4 rounded shadow">
+      <h3 class="font-semibold mb-2 text-center">Total Compliance Scores</h3>
+      <canvas id="totalComplianceChart" height="200"></canvas>
+    </div>
   </div>
-
-  <!-- Filler Word Table -->
-  <div class="bg-white p-4 rounded shadow overflow-x-auto">
-    <h3 class="font-semibold mb-2">Filler Word Percentage</h3>
-    <table class="min-w-full border border-gray-300 text-sm">
-      <thead class="bg-gray-100">
-        <tr>
-          <th class="border px-3 py-2 text-left">Speaker</th>
-          <th class="border px-3 py-2 text-left">Word Count</th>
-          <th class="border px-3 py-2 text-left">Filler Words</th>
-          <th class="border px-3 py-2 text-left">Filler %</th>
-        </tr>
-      </thead>
-      <tbody id="fillerTableBody"></tbody>
-    </table>
-  </div>
-
-  <!-- Meeting-wise Speaker Cards -->
-  <div id="meetingCards" class="space-y-8"></div>
 
   <script>
     const COMPLIANCE_URL = "https://n8n.sapidblue.in/webhook/compliance-scores";
-    const FILLER_URL = "https://n8n.sapidblue.in/webhook/fillerpercent";
+    const TOTAL_COMPLIANCE_URL = "https://n8n.sapidblue.in/webhook/t_data";
+    const USER_STATS_URL = "https://n8n.sapidblue.in/webhook/t_user_Data";
 
     function getDefaultDates() {
       const end = new Date();
@@ -61,108 +52,81 @@
       return { startDate: format(start), endDate: format(end) };
     }
 
-    async function loadDashboard(startDate, endDate) {
-      const compliancePromise = fetch(`${COMPLIANCE_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json());
-      const fillerPromise = fetch(`${FILLER_URL}?start_date=${startDate}&end_date=${endDate}`).then(r => r.json());
+    async function loadUserCards() {
+      const res = await fetch(USER_STATS_URL);
+      const data = await res.json();
+      const container = document.getElementById("userCards");
+      container.innerHTML = "";
 
-      const [complianceData, fillerData] = await Promise.all([compliancePromise, fillerPromise]);
+      data.forEach(user => {
+        const fillerPct = user.word_count ? ((user.filler_words / user.word_count) * 100).toFixed(2) : "0.00";
+        container.innerHTML += `
+          <div class="bg-white p-4 rounded shadow space-y-2">
+            <h3 class="font-semibold text-lg">${user.speaker_name}</h3>
+            <div>Total Words: ${user.word_count}</div>
+            <div>Filler Words: ${user.filler_words}</div>
+            <div>Filler %: ${fillerPct}%</div>
+            <div>Avg Contribution: ${user.avg_contribution_pct.toFixed(1)}%</div>
+            <div>Avg Compliance Score: ${user.avg_compliance_score.toFixed(1)}</div>
+          </div>
+        `;
+      });
+    }
 
-      // ========== Compliance Chart ==========
+    async function loadTotalComplianceChart() {
+      const res = await fetch(TOTAL_COMPLIANCE_URL);
+      const data = await res.json();
+      const ctx = document.getElementById("totalComplianceChart").getContext("2d");
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.speaker_name),
+          datasets: [{
+            label: "Avg Compliance Score",
+            data: data.map(d => d.avg_compliance_score),
+            backgroundColor: "#6366F1"
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true, max: 100 } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    async function loadFilteredComplianceChart(startDate, endDate) {
+      const res = await fetch(`${COMPLIANCE_URL}?start_date=${startDate}&end_date=${endDate}`);
+      const data = await res.json();
       const speakerStats = {};
-      const meetingMap = {};
 
-      complianceData.forEach(entry => {
+      data.forEach(entry => {
         const speaker = entry.speaker_name;
         if (!speakerStats[speaker]) {
-          speakerStats[speaker] = { scoreSum: 0, count: 0 };
+          speakerStats[speaker] = { total: 0, count: 0 };
         }
-        const contribution = entry.word_contribution_pct || 0;
-        if (contribution < 10) return; // Ignore low-contribution entries
-
-        speakerStats[speaker].scoreSum += entry.score;
+        speakerStats[speaker].total += entry.score;
         speakerStats[speaker].count++;
-
-        if (!meetingMap[entry.meeting_id]) {
-          meetingMap[entry.meeting_id] = [];
-        }
-        meetingMap[entry.meeting_id].push(entry);
       });
 
-      const speakerLabels = Object.keys(speakerStats);
-      const avgScores = speakerLabels.map(s =>
-        (speakerStats[s].count > 0
-          ? (speakerStats[s].scoreSum / speakerStats[s].count).toFixed(1)
-          : 0)
-      );
+      const labels = Object.keys(speakerStats);
+      const scores = labels.map(s => (speakerStats[s].total / speakerStats[s].count).toFixed(1));
 
       const ctx = document.getElementById("complianceChart").getContext("2d");
       new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: speakerLabels,
+          labels,
           datasets: [{
             label: "Avg Compliance Score",
-            data: avgScores,
+            data: scores,
             backgroundColor: "#3B82F6"
           }]
         },
         options: {
-          responsive: true,
           scales: { y: { beginAtZero: true, max: 100 } },
           plugins: { legend: { display: false } }
         }
-      });
-
-      // ========== Filler Word Table ==========
-      const fillerTable = document.getElementById("fillerTableBody");
-      fillerTable.innerHTML = "";
-
-      fillerData.forEach(row => {
-        const percent = row.word_count > 0
-          ? ((row.filler_estimate / row.word_count) * 100).toFixed(2)
-          : "0.00";
-
-        fillerTable.innerHTML += `
-          <tr>
-            <td class="border px-3 py-2">${row.speaker_name}</td>
-            <td class="border px-3 py-2">${row.word_count}</td>
-            <td class="border px-3 py-2">${row.filler_estimate}</td>
-            <td class="border px-3 py-2">${percent}%</td>
-          </tr>`;
-      });
-
-      // ========== Meeting-wise Cards ==========
-      const cardContainer = document.getElementById("meetingCards");
-      cardContainer.innerHTML = "";
-
-      Object.entries(meetingMap).forEach(([meetingId, speakers]) => {
-        let cardHTML = `<div class="bg-white p-5 rounded shadow">
-          <h3 class="text-lg font-semibold mb-4">Meeting: ${meetingId}</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
-
-        const seen = new Set();
-
-        speakers.forEach(sp => {
-          const key = sp.speaker_name + sp.email;
-          if (seen.has(key)) return;
-          seen.add(key);
-
-          const fillerPct = sp.word_count ? ((sp.filler_estimate / sp.word_count) * 100).toFixed(2) : "0.00";
-
-          cardHTML += `<div class="border rounded p-3 bg-gray-50 space-y-1">
-            <div><strong>${sp.speaker_name}</strong></div>
-            <div>Word Count: ${sp.word_count}</div>
-            <div>Filler Words: ${sp.filler_estimate}</div>
-            <div>Filler %: ${fillerPct}%</div>
-            <div>Contribution %: ${sp.word_contribution_pct}</div>
-            <div>Compliance Score: ${sp.score}</div>
-            <div class="text-sm text-green-700">✔️ Matched Topics: ${sp.matched_topics || "N/A"}</div>
-            <div class="text-sm text-red-700">❌ Missed Topics: ${sp.missed_topics || "N/A"}</div>
-          </div>`;
-        });
-
-        cardHTML += `</div></div>`;
-        cardContainer.innerHTML += cardHTML;
       });
     }
 
@@ -170,11 +134,13 @@
       e.preventDefault();
       const startDate = document.getElementById("startDate").value;
       const endDate = document.getElementById("endDate").value;
-      loadDashboard(startDate, endDate);
+      loadFilteredComplianceChart(startDate, endDate);
     });
 
     const { startDate, endDate } = getDefaultDates();
-    loadDashboard(startDate, endDate);
+    loadFilteredComplianceChart(startDate, endDate);
+    loadTotalComplianceChart();
+    loadUserCards();
   </script>
 </body>
 </html>
