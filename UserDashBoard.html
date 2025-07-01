@@ -13,79 +13,79 @@
 </head>
 <body class="p-6 max-w-7xl mx-auto space-y-8">
 
-  <h1 class="text-4xl font-bold text-center">🔥 Fireflies Speaker Dashboard</h1>
+<h1 class="text-4xl font-bold text-center">🔥 Fireflies Speaker Dashboard</h1>
 
-  <!-- Date Filter -->
-  <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
-    <label class="flex flex-col">
-      <span>Start Date</span>
-      <input type="date" id="startDate" class="border px-3 py-1 rounded"/>
-    </label>
-    <label class="flex flex-col">
-      <span>End Date</span>
-      <input type="date" id="endDate" class="border px-3 py-1 rounded"/>
-    </label>
-    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded">Apply</button>
-  </form>
+<!-- Date Filter -->
+<form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
+  <label class="flex flex-col">
+    <span>Start Date</span>
+    <input type="date" id="startDate" class="border px-3 py-1 rounded"/>
+  </label>
+  <label class="flex flex-col">
+    <span>End Date</span>
+    <input type="date" id="endDate" class="border px-3 py-1 rounded"/>
+  </label>
+  <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded">Apply</button>
+</form>
 
-  <!-- Charts Row -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Compliance Comparison -->
-    <div class="card">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Compliance: Total vs Filtered</h3>
-        <span class="reload-btn" onclick="reload('combined')">↻ Reload</span>
-      </div>
-      <canvas id="combinedComplianceChart"></canvas>
+<!-- Charts Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Compliance Comparison -->
+  <div class="card">
+    <div class="flex justify-between mb-2">
+      <h3 class="font-semibold">Compliance: Total vs Filtered</h3>
+      <span class="reload-btn" onclick="reload('combined')">↻ Reload</span>
     </div>
-
-    <!-- Stacked Words -->
-    <div class="card">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Stacked Words vs Fillers</h3>
-        <span class="reload-btn" onclick="reload('stacked')">↻ Reload</span>
-      </div>
-      <canvas id="stackedChart"></canvas>
-    </div>
-
-    <!-- Filler Word Table -->
-    <div class="card col-span-full overflow-x-auto">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Filler Word %</h3>
-        <span class="reload-btn" onclick="reload('filler')">↻ Reload</span>
-      </div>
-      <table class="min-w-full text-sm border">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border px-3 py-2">Speaker</th>
-            <th class="border px-3 py-2">Words</th>
-            <th class="border px-3 py-2">Fillers</th>
-            <th class="border px-3 py-2">Filler %</th>
-            <th class="border px-3 py-2">Avg Compliance Score</th>
-          </tr>
-        </thead>
-        <tbody id="fillerBody"></tbody>
-      </table>
-    </div>
-
-    <!-- Word Trends -->
-    <div class="card col-span-full">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
-        <span class="reload-btn" onclick="reload('trend')">↻ Reload</span>
-      </div>
-      <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    </div>
-
-    <!-- Meeting-Specific Cards -->
-    <div class="card col-span-full">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
-        <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
-      </div>
-      <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    </div>
+    <canvas id="combinedComplianceChart"></canvas>
   </div>
+
+  <!-- Stacked Words -->
+  <div class="card">
+    <div class="flex justify-between mb-2">
+      <h3 class="font-semibold">Stacked Words vs Fillers</h3>
+      <span class="reload-btn" onclick="reload('stacked')">↻ Reload</span>
+    </div>
+    <canvas id="stackedChart"></canvas>
+  </div>
+
+  <!-- Filler Word Table -->
+  <div class="card col-span-full overflow-x-auto">
+    <div class="flex justify-between mb-2">
+      <h3 class="font-semibold">Filler Word %</h3>
+      <span class="reload-btn" onclick="reload('filler')">↻ Reload</span>
+    </div>
+    <table class="min-w-full text-sm border">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border px-3 py-2">Speaker</th>
+          <th class="border px-3 py-2">Words</th>
+          <th class="border px-3 py-2">Fillers</th>
+          <th class="border px-3 py-2">Filler %</th>
+          <th class="border px-3 py-2">Avg Compliance Score</th>
+        </tr>
+      </thead>
+      <tbody id="fillerBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Word Trends -->
+  <div class="card col-span-full">
+    <div class="flex justify-between mb-2">
+      <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
+      <span class="reload-btn" onclick="reload('trend')">↻ Reload</span>
+    </div>
+    <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+  </div>
+
+  <!-- Meeting-Specific Cards -->
+  <div class="card col-span-full">
+    <div class="flex justify-between mb-2">
+      <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
+      <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
+    </div>
+    <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </div>
+</div>
 
 <script>
   const endpoints = {
@@ -189,7 +189,12 @@
     for (const [meetingId, speakers] of Object.entries(grouped)) {
       const outer = document.createElement('div');
       outer.className = 'card space-y-3';
-      outer.innerHTML = `<h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>`;
+      outer.innerHTML = `
+        <div class="flex justify-between items-center">
+          <h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>
+          <a href="https://prabhas98789.github.io/Job-scraper/meet.html?meeting_id=${meetingId}" target="_blank"
+             class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded">View</a>
+        </div>`;
       speakers.forEach(item => {
         const speakerCard = document.createElement('div');
         speakerCard.className = 'border p-3 rounded bg-gray-50';
