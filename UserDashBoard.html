@@ -68,7 +68,7 @@
       </table>
     </div>
 
-    <!-- Individual Word Trends -->
+    <!-- Word Trends -->
     <div class="card col-span-full">
       <div class="flex justify-between mb-2">
         <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
@@ -182,7 +182,8 @@
           data: d,
           backgroundColor: dsLabels[i] === 'Fillers' ? '#F97316' : '#3B82F6',
           borderColor: '#3B82F6',
-          tension: 0.3
+          tension: 0.3,
+          fill: false
         }))
       },
       options: {
