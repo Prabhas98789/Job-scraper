@@ -49,22 +49,10 @@
     <canvas id="wordTrendChart" width="800" height="220"></canvas>
   </div>
 
-  <!-- Meetings Table -->
-  <div class="bg-white p-4 rounded shadow overflow-x-auto">
-    <h3 class="font-semibold mb-4 text-xl">Meeting Summary</h3>
-    <table class="min-w-full border border-gray-200">
-      <thead class="bg-gray-100">
-        <tr>
-          <th class="border px-4 py-2 text-left">Meeting ID</th>
-          <th class="border px-4 py-2 text-left">Speakers</th>
-          <th class="border px-4 py-2 text-left">Words</th>
-          <th class="border px-4 py-2 text-left">Filler Words</th>
-          <th class="border px-4 py-2 text-left">Avg. Contribution %</th>
-          <th class="border px-4 py-2 text-center">Action</th>
-        </tr>
-      </thead>
-      <tbody id="meetingTableBody"></tbody>
-    </table>
+  <!-- Speaker Summary Cards -->
+  <div class="space-y-6">
+    <h3 class="font-semibold mb-4 text-xl">Speaker Summary</h3>
+    <div id="speakerCards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
   </div>
 
   <script>
@@ -72,7 +60,6 @@
     const STACKED_URL = "https://n8n.sapidblue.in/webhook/totalinaregion";
     const COMPLIANCE_URL = "https://n8n.sapidblue.in/webhook/compliance-scores";
     const TREND_URL = "https://n8n.sapidblue.in/webhook/word-trend-stats";
-    const MEETING_PAGE = "meeting.html";
 
     function getDefaultDates() {
       const end = new Date();
@@ -93,6 +80,7 @@
       ]);
 
       const speakers = data.filter(x => x.speaker_name);
+
       const grouped = speakers.reduce((acc, curr) => {
         const name = curr.speaker_name;
         if (!acc[name]) acc[name] = { contrib: 0 };
@@ -185,33 +173,57 @@
         }
       });
 
-      // Meeting Table
-      const table = document.getElementById("meetingTableBody");
-      table.innerHTML = "";
-      const meetings = {};
+      // Speaker Summary Cards
+      const cardWrapper = document.getElementById("speakerCards");
+      cardWrapper.innerHTML = "";
+
+      const speakerMap = {};
+
       speakers.forEach(row => {
-        if (!row.meeting_id) return;
-        if (!meetings[row.meeting_id]) {
-          meetings[row.meeting_id] = { speakers: [], words: 0, fillers: 0, contribs: [] };
+        const name = row.speaker_name;
+        if (!speakerMap[name]) {
+          speakerMap[name] = {
+            name,
+            word_count: 0,
+            filler_estimate: 0,
+            contribs: [],
+          };
         }
-        meetings[row.meeting_id].speakers.push(row.speaker_name);
-        meetings[row.meeting_id].words += +row.word_count || +row.total_words || 0;
-        meetings[row.meeting_id].fillers += +row.filler_estimate || +row.total_fillers || 0;
-        meetings[row.meeting_id].contribs.push(+row.word_contribution_pct || +row.avg_contribution_pct || 0);
+        speakerMap[name].word_count += +row.word_count || 0;
+        speakerMap[name].filler_estimate += +row.filler_estimate || 0;
+        speakerMap[name].contribs.push(+row.word_contribution_pct || 0);
       });
-      Object.entries(meetings).forEach(([id, m]) => {
-        const avgC = (m.contribs.reduce((a, b) => a + b, 0) / m.contribs.length).toFixed(2);
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="border px-4 py-2 font-mono text-sm bg-gray-50">${id}</td>
-          <td class="border px-4 py-2">${[...new Set(m.speakers)].join(', ')}</td>
-          <td class="border px-4 py-2">${m.words}</td>
-          <td class="border px-4 py-2">${m.fillers}</td>
-          <td class="border px-4 py-2">${avgC}</td>
-          <td class="border px-4 py-2 text-center">
-            <a href="${MEETING_PAGE}?meeting_id=${id}" class="text-blue-600 underline">View</a>
-          </td>`;
-        table.appendChild(tr);
+
+      complianceData.forEach(row => {
+        if (!speakerMap[row.speaker_name]) return;
+        speakerMap[row.speaker_name].compliance = {
+          score: row.score,
+          matched: row.matched_topics,
+          missed: row.missed_topics,
+        };
+      });
+
+      Object.values(speakerMap).forEach(speaker => {
+        const avgContrib = (
+          speaker.contribs.reduce((a, b) => a + b, 0) / speaker.contribs.length
+        ).toFixed(2);
+
+        const compliance = speaker.compliance || {};
+
+        const div = document.createElement("div");
+        div.className = "bg-white rounded shadow p-4 space-y-2";
+
+        div.innerHTML = `
+          <h4 class="text-lg font-bold">${speaker.name}</h4>
+          <p><strong>Total Words:</strong> ${speaker.word_count}</p>
+          <p><strong>Filler Words:</strong> ${speaker.filler_estimate}</p>
+          <p><strong>Avg. Contribution:</strong> ${avgContrib}%</p>
+          <p><strong>Compliance Score:</strong> ${compliance.score ?? 'N/A'}</p>
+          <p><strong>Matched Topics:</strong> ${compliance.matched ?? '–'}</p>
+          <p><strong>Missed Topics:</strong> ${compliance.missed ?? '–'}</p>
+        `;
+
+        cardWrapper.appendChild(div);
       });
     }
 
