@@ -177,20 +177,43 @@
     });
   }
 
-  async function loadLifecycle(){
-    const arr = await fetch(endpoints.lifecycle).then(r => r.json());
-    const container = document.getElementById('meetingCards');
-    container.innerHTML = '';
+  async function loadLifecycle() {
+  const arr = await fetch(endpoints.lifecycle).then(r => r.json());
+  const container = document.getElementById('meetingCards');
+  container.innerHTML = '';
 
-    const grouped = {};
-    arr.forEach(o => {
-      if (!grouped[o.meeting_id]) grouped[o.meeting_id] = [];
-      const existing = grouped[o.meeting_id].find(e => e.speaker_name === o.speaker_name);
-      if (!existing || o.score < existing.score) {
-        grouped[o.meeting_id] = grouped[o.meeting_id].filter(e => e.speaker_name !== o.speaker_name);
-        grouped[o.meeting_id].push(o);
-      }
+  const grouped = {};
+  arr.forEach(o => {
+    if (!grouped[o.meeting_id]) grouped[o.meeting_id] = [];
+    const existing = grouped[o.meeting_id].find(e => e.speaker_name === o.speaker_name);
+    if (!existing || o.score < existing.score) {
+      grouped[o.meeting_id] = grouped[o.meeting_id].filter(e => e.speaker_name !== o.speaker_name);
+      grouped[o.meeting_id].push(o);
+    }
+  });
+
+  for (const [meetingId, speakers] of Object.entries(grouped)) {
+    const outer = document.createElement('div');
+    outer.className = 'card space-y-3';
+    outer.innerHTML = `<h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>`;
+
+    speakers.forEach(item => {
+      const speakerCard = document.createElement('div');
+      speakerCard.className = 'border p-3 rounded bg-gray-50';
+      speakerCard.innerHTML = `
+        <div class="font-semibold text-blue-700">${item.speaker_name} (${item.email || 'no email'})</div>
+        <div><strong>Compliance Score:</strong> ${item.score}</div>
+        <div><strong>Matched Topics:</strong> ${item.matched_topics || 'None'}</div>
+        <div><strong>Missed Topics:</strong> ${item.missed_topics || 'None'}</div>
+        <div><strong>Matched Keywords:</strong> ${item.matched?.length ? item.matched.join(', ') : 'None'}</div>
+        <div><strong>Unmatched Keywords:</strong> ${item.unmatched?.length ? item.unmatched.join(', ') : 'None'}</div>
+      `;
+      outer.appendChild(speakerCard);
     });
+
+    container.appendChild(outer);
+  }
+};
 
     for (const [meetingId, speakers] of Object.entries(grouped)) {
       const outer = document.createElement('div');
