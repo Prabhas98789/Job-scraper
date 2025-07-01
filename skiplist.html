@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <title>Skip List Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-6">
+  <h1 class="text-xl font-bold mb-4">Skip List Checker</h1>
+
+  <textarea id="dataInput" class="w-full h-32 p-2 border rounded" placeholder="Paste company names, one per line..."></textarea>
+  <button onclick="submitData()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Check Data</button>
+
+  <table class="table-auto w-full mt-6 border-collapse border" id="resultsTable">
+    <thead>
+      <tr>
+        <th class="border p-2">Company Name</th>
+        <th class="border p-2">Status</th>
+        <th class="border p-2">Action</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <script>
+    const checkURL = "https://n8n.sapidblue.in/webhook/dataskiplist";
+    const skipURL = "https://n8n.sapidblue.in/webhook/addtoskiplist"; // change if needed
+
+    async function submitData() {
+      const inputText = document.getElementById('dataInput').value;
+      const rows = inputText.trim().split('\n').map(line => line.trim()).filter(Boolean);
+
+      const response = await fetch(checkURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companies: rows })
+      });
+
+      const result = await response.json();
+      const tableBody = document.getElementById('tableBody');
+      tableBody.innerHTML = '';
+
+      result.forEach(({ name, exists }) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="border p-2 ${exists ? 'bg-red-200' : ''}">${name}</td>
+          <td class="border p-2">${exists ? 'Matched' : 'New'}</td>
+          <td class="border p-2">
+            <button onclick="skipCompany('${name}')" class="px-3 py-1 rounded bg-yellow-500 text-white">Skip</button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    async function skipCompany(name) {
+      const res = await fetch(skipURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (res.ok) {
+        alert(`${name} added to skip list.`);
+        submitData(); // Refresh the table
+      } else {
+        alert(`Failed to skip ${name}.`);
+      }
+    }
+  </script>
+</body>
+</html>
