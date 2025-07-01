@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Newsletter Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f3f3f3;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    textarea {
+      width: 100%;
+      height: 120px;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      resize: vertical;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      background: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #999;
+    }
+
+    #preview {
+      margin-top: 30px;
+      border-top: 1px solid #ddd;
+      padding-top: 20px;
+    }
+
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      border-radius: 6px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Newsletter Generator</h2>
+    <p>Paste 2–3 article links (one per line):</p>
+
+    <textarea id="urls" placeholder="https://example.com/article1&#10;https://example.com/article2"></textarea>
+    <button onclick="generateNewsletter()" id="generateBtn">Generate Newsletter</button>
+
+    <div id="preview"></div>
+  </div>
+
+  <script>
+    async function generateNewsletter() {
+      const btn = document.getElementById("generateBtn");
+      const urlsText = document.getElementById("urls").value.trim();
+      const urls = urlsText.split("\n").map(u => u.trim()).filter(Boolean);
+
+      if (urls.length === 0) {
+        alert("Please enter at least one article link.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Generating…";
+
+      try {
+        const res = await fetch("https://n8n.sapidblue.in/webhook/fetch-newsletter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ urls })
+        });
+
+        const html = await res.text();
+
+        document.getElementById("preview").innerHTML = `
+          <h3>Preview:</h3>
+          <iframe srcdoc="${html.replace(/"/g, '&quot;')}"></iframe>
+        `;
+      } catch (err) {
+        alert("Something went wrong: " + err.message);
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Generate Newsletter";
+      }
+    }
+  </script>
+</body>
+</html>
