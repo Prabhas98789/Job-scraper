@@ -7,7 +7,7 @@
   <style>
     body {
       font-family: sans-serif;
-      background: #f3f3f3;
+      background: #f0f0f0;
       padding: 40px;
     }
 
@@ -20,29 +20,47 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
-    textarea {
-      width: 100%;
-      height: 120px;
-      padding: 10px;
-      font-size: 14px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      resize: vertical;
+    h2 {
+      margin-top: 0;
     }
 
-    button {
-      margin-top: 10px;
-      padding: 12px 20px;
-      font-size: 16px;
-      background: #0077cc;
+    .link-group {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .link-group input {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    .add-btn {
+      background: #28a745;
       color: white;
       border: none;
+      padding: 8px 12px;
+      margin-left: 10px;
+      font-size: 16px;
       border-radius: 5px;
       cursor: pointer;
     }
 
-    button:disabled {
-      background: #999;
+    .generate-btn {
+      background: #0077cc;
+      color: white;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .generate-btn:disabled {
+      background: #aaa;
     }
 
     #preview {
@@ -63,22 +81,48 @@
 <body>
   <div class="container">
     <h2>Newsletter Generator</h2>
-    <p>Paste 2–3 article links (one per line):</p>
+    <p>Paste article links one by one:</p>
 
-    <textarea id="urls" placeholder="https://example.com/article1&#10;https://example.com/article2"></textarea>
-    <button onclick="generateNewsletter()" id="generateBtn">Generate Newsletter</button>
+    <div id="linkInputs">
+      <div class="link-group">
+        <input type="text" name="url" placeholder="https://example.com/article1" />
+        <button class="add-btn" onclick="addLinkInput()">➕</button>
+      </div>
+    </div>
+
+    <button class="generate-btn" onclick="generateNewsletter()" id="generateBtn">Generate Newsletter</button>
 
     <div id="preview"></div>
   </div>
 
   <script>
+    function addLinkInput() {
+      const container = document.getElementById("linkInputs");
+      const group = document.createElement("div");
+      group.className = "link-group";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.name = "url";
+      input.placeholder = "https://example.com/article";
+
+      const button = document.createElement("button");
+      button.textContent = "➕";
+      button.className = "add-btn";
+      button.onclick = addLinkInput;
+
+      group.appendChild(input);
+      group.appendChild(button);
+      container.appendChild(group);
+    }
+
     async function generateNewsletter() {
       const btn = document.getElementById("generateBtn");
-      const urlsText = document.getElementById("urls").value.trim();
-      const urls = urlsText.split("\n").map(u => u.trim()).filter(Boolean);
+      const inputs = document.querySelectorAll('input[name="url"]');
+      const urls = Array.from(inputs).map(input => input.value.trim()).filter(Boolean);
 
       if (urls.length === 0) {
-        alert("Please enter at least one article link.");
+        alert("Please paste at least one article link.");
         return;
       }
 
@@ -95,7 +139,7 @@
         const html = await res.text();
 
         document.getElementById("preview").innerHTML = `
-          <h3>Preview:</h3>
+          <h3>Newsletter Preview</h3>
           <iframe srcdoc="${html.replace(/"/g, '&quot;')}"></iframe>
         `;
       } catch (err) {
