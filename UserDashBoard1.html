@@ -210,21 +210,21 @@
   }
 
   async function loadFiller(){
-    const arr = await fetch(`${endpoints.filler}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    document.getElementById('fillerBody').innerHTML = arr.map(o => {
-      const percent = o.total_words && o.total_words !== "0" ? ((+o.total_fillers / +o.total_words) * 100).toFixed(2) : "0.00";
-      const key = o.email || o.speaker_name;
-      return `<tr>
-        <td class="border px-3 py-1">${o.speaker_name}</td>
-        <td class="border px-3 py-1">${o.total_words}</td>
-        <td class="border px-3 py-1">${o.total_fillers}</td>
-        <td class="border px-3 py-1">${percent}%</td>
-        <td class="border px-3 py-1">${(+o.avg_score).toFixed(1)}</td>
-        <td class="border px-3 py-1">${speakerMeetingMap[key]?.size || 0}</td>
-        <td class="border px-3 py-1">${speakerMonthlyMeetingMap[key]?.size || 0}</td>
-      </tr>`;
-    }).join('');
-  }
+  const arr = await fetch(`${endpoints.filler}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+  document.getElementById('fillerBody').innerHTML = arr.map(o => {
+    const percent = o.total_words && o.total_words !== "0" ? ((+o.total_fillers / +o.total_words) * 100).toFixed(2) : "0.00";
+    return `<tr>
+      <td class="border px-3 py-1">${o.speaker_name}</td>
+      <td class="border px-3 py-1">${o.total_words}</td>
+      <td class="border px-3 py-1">${o.total_fillers}</td>
+      <td class="border px-3 py-1">${percent}%</td>
+      <td class="border px-3 py-1">${(+o.avg_score).toFixed(1)}</td>
+      <td class="border px-3 py-1">${o.total_meetings || 0}</td>
+      <td class="border px-3 py-1">${o.meetings_in_range || 0}</td>
+    </tr>`;
+  }).join('');
+}
+
 
   async function loadTrend(){
     const arr = await fetch(`${endpoints.trend}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
