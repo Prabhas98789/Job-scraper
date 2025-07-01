@@ -27,11 +27,14 @@
     <h2 class="text-lg font-semibold mb-2">Check Companies Against Skip List</h2>
     <textarea id="checkInput" class="w-full h-32 p-2 border rounded" placeholder="Paste company names to check..."></textarea>
     <button onclick="submitCheck()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Check</button>
+    <div id="checkStatus" class="mt-4 font-medium"></div>
+
     <table class="table-auto w-full mt-6 border-collapse border" id="checkTable">
       <thead>
         <tr>
           <th class="border p-2">Company Name</th>
           <th class="border p-2">Status</th>
+          <th class="border p-2">Action</th>
         </tr>
       </thead>
       <tbody id="checkTableBody"></tbody>
@@ -59,6 +62,7 @@
       });
       const data = await res.json();
       document.getElementById('uploadStatus').innerText = `✅ Added ${data.added?.length || 0} companies to skip list.`;
+      document.getElementById('uploadInput').value = '';
     }
 
     async function submitCheck() {
@@ -66,26 +70,47 @@
       if (!input) return alert("Please enter company names.");
       const companies = input.split('\n').map(x => x.trim()).filter(Boolean);
 
+      document.getElementById('checkStatus').innerText = '🔄 Checking...';
+
       const res = await fetch(checkURL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ companies })
       });
+
       const result = await res.json();
       const tbody = document.getElementById('checkTableBody');
       tbody.innerHTML = '';
+      document.getElementById('checkStatus').innerText = `✅ Checked ${result.length} companies`;
 
       result.forEach(({ name, exists }) => {
         const row = document.createElement('tr');
         row.innerHTML = `
           <td class="border p-2 ${exists ? 'bg-red-200' : ''}">${name}</td>
           <td class="border p-2">${exists ? 'In Skip List' : 'Not in Skip List'}</td>
+          <td class="border p-2">
+            ${!exists ? `<button class="bg-green-500 text-white px-2 py-1 rounded text-sm" onclick="addSingleToSkip('${name}', this)">Add</button>` : ''}
+          </td>
         `;
         tbody.appendChild(row);
       });
     }
 
-    // Default view
+    async function addSingleToSkip(company, btn) {
+      btn.disabled = true;
+      btn.innerText = "Adding...";
+      const res = await fetch(uploadURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companies: [company] })
+      });
+      const data = await res.json();
+      btn.innerText = "✅ Added";
+      btn.classList.remove('bg-green-500');
+      btn.classList.add('bg-gray-400');
+    }
+
+    // Show default tab
     showTab('add');
   </script>
 </body>
