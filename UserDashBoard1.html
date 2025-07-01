@@ -1,285 +1,289 @@
 <!DOCTYPE html>
 <html lang="en" class="bg-gray-100 text-gray-800">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <title>Fireflies Speaker Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     canvas { max-height: 300px; }
-    .card { background:#fff; padding:1rem; border-radius:.5rem; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
-    .reload-btn { font-size:.875rem; color:#2563EB; cursor:pointer; text-decoration:underline; }
+    .card { background: #fff; padding: 1rem; border-radius: .5rem; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+    .reload-btn { font-size: .875rem; color: #2563EB; cursor: pointer; text-decoration: underline; }
   </style>
 </head>
 <body class="p-6 max-w-7xl mx-auto space-y-8">
 
-<h1 class="text-4xl font-bold text-center">🔥 Fireflies Speaker Dashboard</h1>
-<div id="summaryBox" class="text-center text-sm text-gray-600 mt-1"></div>
+  <h1 class="text-4xl font-bold text-center">🔥 Fireflies Speaker Dashboard</h1>
+  <div id="summaryBox" class="text-center text-sm text-gray-600 mt-1"></div>
 
-<!-- Date Filter -->
-<form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
-  <label class="flex flex-col">
-    <span>Start Date</span>
-    <input type="date" id="startDate" class="border px-3 py-1 rounded"/>
-  </label>
-  <label class="flex flex-col">
-    <span>End Date</span>
-    <input type="date" id="endDate" class="border px-3 py-1 rounded"/>
-  </label>
-  <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded">Apply</button>
-</form>
+  <!-- Date Filter -->
+  <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
+    <label class="flex flex-col">
+      <span>Start Date</span>
+      <input type="date" id="startDate" class="border px-3 py-1 rounded" />
+    </label>
+    <label class="flex flex-col">
+      <span>End Date</span>
+      <input type="date" id="endDate" class="border px-3 py-1 rounded" />
+    </label>
+    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded">Apply</button>
+  </form>
 
-<!-- Charts Row -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <!-- Compliance Comparison -->
-  <div class="card">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">Compliance: Total vs Filtered</h3>
-      <span class="reload-btn" onclick="reload('combined')">↻ Reload</span>
+  <!-- Charts and Tables -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- Compliance Comparison -->
+    <div class="card">
+      <div class="flex justify-between mb-2">
+        <h3 class="font-semibold">Compliance: Total vs Filtered</h3>
+        <span class="reload-btn" onclick="reload('combined')">↻ Reload</span>
+      </div>
+      <canvas id="combinedComplianceChart"></canvas>
     </div>
-    <canvas id="combinedComplianceChart"></canvas>
+
+    <!-- Stacked Words -->
+    <div class="card">
+      <div class="flex justify-between mb-2">
+        <h3 class="font-semibold">Stacked Words vs Fillers</h3>
+        <span class="reload-btn" onclick="reload('stacked')">↻ Reload</span>
+      </div>
+      <canvas id="stackedChart"></canvas>
+    </div>
+
+    <!-- Filler Word Table -->
+    <div class="card col-span-full overflow-x-auto">
+      <div class="flex justify-between mb-2">
+        <h3 class="font-semibold">Filler Word %</h3>
+        <span class="reload-btn" onclick="reload('filler')">↻ Reload</span>
+      </div>
+      <table class="min-w-full text-sm border">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="border px-3 py-2">Speaker</th>
+            <th class="border px-3 py-2">Words</th>
+            <th class="border px-3 py-2">Fillers</th>
+            <th class="border px-3 py-2">Filler %</th>
+            <th class="border px-3 py-2">Avg Compliance Score</th>
+          </tr>
+        </thead>
+        <tbody id="fillerBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Word Trends -->
+    <div class="card col-span-full">
+      <div class="flex justify-between mb-2">
+        <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
+        <span class="reload-btn" onclick="reload('trend')">↻ Reload</span>
+      </div>
+      <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- Meeting-Specific Cards -->
+    <div class="card col-span-full">
+      <div class="flex justify-between mb-2">
+        <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
+        <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
+      </div>
+      <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
   </div>
 
-  <!-- Stacked Words -->
-  <div class="card">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">Stacked Words vs Fillers</h3>
-      <span class="reload-btn" onclick="reload('stacked')">↻ Reload</span>
-    </div>
-    <canvas id="stackedChart"></canvas>
-  </div>
+  <script>
+    const endpoints = {
+      combined: 'https://n8n.sapidblue.in/webhook/t_data',
+      filtered: 'https://n8n.sapidblue.in/webhook/compliance-scores',
+      filler: 'https://n8n.sapidblue.in/webhook/fillerpercent',
+      trend: 'https://n8n.sapidblue.in/webhook/word-trend-stats',
+      stacked: 'https://n8n.sapidblue.in/webhook/totalinaregion',
+      lifecycle: 'https://n8n.sapidblue.in/webhook/metings',
+    };
 
-  <!-- Filler Word Table -->
-  <div class="card col-span-full overflow-x-auto">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">Filler Word %</h3>
-      <span class="reload-btn" onclick="reload('filler')">↻ Reload</span>
-    </div>
-    <table class="min-w-full text-sm border">
-      <thead class="bg-gray-100">
-        <tr>
-          <th class="border px-3 py-2">Speaker</th>
-          <th class="border px-3 py-2">Words</th>
-          <th class="border px-3 py-2">Fillers</th>
-          <th class="border px-3 py-2">Filler %</th>
-          <th class="border px-3 py-2">Avg Compliance Score</th>
-        </tr>
-      </thead>
-      <tbody id="fillerBody"></tbody>
-    </table>
-  </div>
+    let filters = { start: '', end: '' };
 
-  <!-- Word Trends -->
-  <div class="card col-span-full">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
-      <span class="reload-btn" onclick="reload('trend')">↻ Reload</span>
-    </div>
-    <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-  </div>
-
-  <!-- Meeting-Specific Cards -->
-  <div class="card col-span-full">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
-      <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
-    </div>
-    <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-  </div>
-</div>
-
-<script>
-  const endpoints = {
-    combined: 'https://n8n.sapidblue.in/webhook/t_data',
-    filtered: 'https://n8n.sapidblue.in/webhook/compliance-scores',
-    filler: 'https://n8n.sapidblue.in/webhook/fillerpercent',
-    trend: 'https://n8n.sapidblue.in/webhook/word-trend-stats',
-    stacked: 'https://n8n.sapidblue.in/webhook/totalinaregion',
-    lifecycle: 'https://n8n.sapidblue.in/webhook/metings',
-  };
-
-  let filters = { start: '', end: '' };
-
-  function setDefaultDates(){
-    const now = new Date(), prev = new Date();
-    prev.setDate(now.getDate() - 30);
-    const fmt = d => d.toISOString().split('T')[0];
-    document.getElementById('startDate').value = filters.start = fmt(prev);
-    document.getElementById('endDate').value = filters.end = fmt(now);
-  }
-
-  function reload(type){
-    switch(type){
-      case 'combined': loadCombined(); break;
-      case 'stacked': loadStacked(); break;
-      case 'filler': loadFiller(); break;
-      case 'trend': loadTrend(); break;
-      case 'lifecycle': loadLifecycle(); break;
+    function setDefaultDates() {
+      const now = new Date(), prev = new Date();
+      prev.setDate(now.getDate() - 30);
+      const fmt = d => d.toISOString().split('T')[0];
+      document.getElementById('startDate').value = filters.start = fmt(prev);
+      document.getElementById('endDate').value = filters.end = fmt(now);
     }
-  }
 
-  async function loadLifecycle(){
-    const arr = await fetch(endpoints.lifecycle).then(r => r.json());
-    const container = document.getElementById('meetingCards');
-    const summaryBox = document.getElementById('summaryBox');
-    container.innerHTML = '';
-    summaryBox.textContent = `📊 Showing unique meeting counts based on selected date range (${filters.start} to ${filters.end})`;
-
-    const speakerMeetingMap = {};
-    const speakerMonthlyMeetingMap = {};
-    const startDate = new Date(filters.start);
-    const endDate = new Date(filters.end);
-
-    arr.forEach(o => {
-      const speakerKey = o.email || o.speaker_name;
-      const rawDate = o.date || o.timestamp || o.created_at || o.updated_at || null;
-      const meetingDate = rawDate ? new Date(rawDate) : null;
-      const inRange = meetingDate && meetingDate >= startDate && meetingDate <= endDate;
-
-      if (!speakerMeetingMap[speakerKey]) speakerMeetingMap[speakerKey] = new Set();
-      speakerMeetingMap[speakerKey].add(o.meeting_id);
-
-      if (inRange) {
-        if (!speakerMonthlyMeetingMap[speakerKey]) speakerMonthlyMeetingMap[speakerKey] = new Set();
-        speakerMonthlyMeetingMap[speakerKey].add(o.meeting_id);
+    function reload(type) {
+      switch (type) {
+        case 'combined': loadCombined(); break;
+        case 'stacked': loadStacked(); break;
+        case 'filler': loadFiller(); break;
+        case 'trend': loadTrend(); break;
+        case 'lifecycle': loadLifecycle(); break;
       }
-    });
+    }
 
-    const grouped = {};
-    arr.forEach(o => {
-      if (!grouped[o.meeting_id]) grouped[o.meeting_id] = [];
-      grouped[o.meeting_id].push(o);
-    });
+    async function loadLifecycle() {
+      const arr = await fetch(endpoints.lifecycle).then(r => r.json());
+      const container = document.getElementById('meetingCards');
+      const summaryBox = document.getElementById('summaryBox');
+      container.innerHTML = '';
+      summaryBox.textContent = `📊 Showing unique meeting counts based on selected date range (${filters.start} to ${filters.end})`;
 
-    for (const [meetingId, speakers] of Object.entries(grouped)) {
-      const outer = document.createElement('div');
-      outer.className = 'card space-y-3';
-      outer.innerHTML = `
-        <div class="flex justify-between items-center">
-          <h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>
-          <a href="https://prabhas98789.github.io/Job-scraper/meet.html?meeting_id=${meetingId}" target="_blank"
-             class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded">View</a>
-        </div>`;
+      const speakerMeetingMap = {};
+      const speakerMonthlyMeetingMap = {};
+      const startDate = new Date(filters.start);
+      const endDate = new Date(filters.end);
 
-      speakers.forEach(item => {
-        const speakerKey = item.email || item.speaker_name;
-        const totalMeetings = speakerMeetingMap[speakerKey]?.size || 0;
-        const monthlyMeetings = speakerMonthlyMeetingMap[speakerKey]?.size || 0;
+      arr.forEach(o => {
+        const speakerKey = o.email || o.speaker_name;
+        const rawDate = o.date || o.timestamp || o.created_at || o.updated_at || null;
+        const meetingDate = rawDate ? new Date(rawDate) : null;
+        const inRange = meetingDate && meetingDate >= startDate && meetingDate <= endDate;
 
-        const speakerCard = document.createElement('div');
-        speakerCard.className = 'border p-3 rounded bg-gray-50';
-        speakerCard.innerHTML = `
-          <div class="font-semibold text-blue-700">${item.speaker_name} (${item.email || 'no email'})</div>
-          <div><strong>Total Unique Meetings:</strong> ${totalMeetings}</div>
-          <div><strong>Meetings in Selected Range:</strong> ${monthlyMeetings}</div>
-          <div><strong>Compliance Score:</strong> ${item.score}</div>
-          <div><strong>Matched Topics:</strong> ${item.matched_topics || 'None'}</div>
-          <div><strong>Missed Topics:</strong> ${item.missed_topics || 'None'}</div>
-          <div><strong>Matched Keywords:</strong> ${item.matched?.length ? item.matched.join(', ') : 'None'}</div>
-          <div><strong>Unmatched Keywords:</strong> ${item.unmatched?.length ? item.unmatched.join(', ') : 'None'}</div>
-        `;
-        outer.appendChild(speakerCard);
+        if (!speakerMeetingMap[speakerKey]) speakerMeetingMap[speakerKey] = new Set();
+        speakerMeetingMap[speakerKey].add(o.meeting_id);
+
+        if (inRange) {
+          if (!speakerMonthlyMeetingMap[speakerKey]) speakerMonthlyMeetingMap[speakerKey] = new Set();
+          speakerMonthlyMeetingMap[speakerKey].add(o.meeting_id);
+        }
       });
 
-      container.appendChild(outer);
-    }
-  }
+      const grouped = {};
+      arr.forEach(o => {
+        if (!grouped[o.meeting_id]) grouped[o.meeting_id] = [];
+        grouped[o.meeting_id].push(o);
+      });
 
-  async function loadCombined(){
-    const tot = await fetch(endpoints.combined).then(r => r.json());
-    const filt = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    const names = [...new Set([...tot.map(o => o.speaker_name), ...filt.map(o => o.speaker_name)])];
-    const totMap = Object.fromEntries(tot.map(o => [o.speaker_name, o.avg_compliance_score]));
-    const filtAgg = {};
-    filt.forEach(o => {
-      if (!filtAgg[o.speaker_name]) filtAgg[o.speaker_name] = {sum: 0, c: 0};
-      filtAgg[o.speaker_name].sum += o.score;
-      filtAgg[o.speaker_name].c++;
-    });
-    const filtMap = Object.fromEntries(Object.entries(filtAgg).map(([s, v]) => [s, (v.sum / v.c).toFixed(1)]));
-    renderChart('combinedComplianceChart', 'bar', names, [names.map(n => totMap[n] || 0), names.map(n => filtMap[n] || 0)], ['Overall', 'Filtered'], {max: 100, colors: ['#3B82F6', '#10B981']});
-  }
+      for (const [meetingId, speakers] of Object.entries(grouped)) {
+        const outer = document.createElement('div');
+        outer.className = 'card space-y-3';
+        outer.innerHTML = `
+          <div class="flex justify-between items-center">
+            <h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>
+            <a href="https://prabhas98789.github.io/Job-scraper/meet.html?meeting_id=${meetingId}" target="_blank"
+               class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded">View</a>
+          </div>`;
 
-  async function loadStacked(){
-    const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    renderChart('stackedChart', 'bar', arr.map(o => o.speaker_name), [arr.map(o => +o.total_words), arr.map(o => +o.total_fillers)], ['Total', 'Fillers'], {stacked: true, colors: ['#3B82F6', '#F97316']});
-  }
+        speakers.forEach(item => {
+          const speakerKey = item.email || item.speaker_name;
+          const totalMeetings = speakerMeetingMap[speakerKey]?.size || 0;
+          const monthlyMeetings = speakerMonthlyMeetingMap[speakerKey]?.size || 0;
 
-  async function loadFiller(){
-    const arr = await fetch(`${endpoints.filler}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    document.getElementById('fillerBody').innerHTML = arr.map(o => {
-      const percent = o.total_words && o.total_words !== "0" ? ((+o.total_fillers / +o.total_words) * 100).toFixed(2) : "0.00";
-      return `<tr>
-        <td class="border px-3 py-1">${o.speaker_name}</td>
-        <td class="border px-3 py-1">${o.total_words}</td>
-        <td class="border px-3 py-1">${o.total_fillers}</td>
-        <td class="border px-3 py-1">${percent}%</td>
-        <td class="border px-3 py-1">${(+o.avg_score).toFixed(1)}</td>
-      </tr>`;
-    }).join('');
-  }
+          const speakerCard = document.createElement('div');
+          speakerCard.className = 'border p-3 rounded bg-gray-50';
+          speakerCard.innerHTML = `
+            <div class="font-semibold text-blue-700">${item.speaker_name} (${item.email || 'no email'})</div>
+            <div><strong>Total Unique Meetings:</strong> ${totalMeetings}</div>
+            <div><strong>Meetings in Selected Range:</strong> ${monthlyMeetings}</div>
+            <div><strong>Compliance Score:</strong> ${item.score}</div>
+            <div><strong>Matched Topics:</strong> ${item.matched_topics || 'None'}</div>
+            <div><strong>Missed Topics:</strong> ${item.missed_topics || 'None'}</div>
+            <div><strong>Matched Keywords:</strong> ${item.matched?.join(', ') || 'None'}</div>
+            <div><strong>Unmatched Keywords:</strong> ${item.unmatched?.join(', ') || 'None'}</div>`;
+          outer.appendChild(speakerCard);
+        });
 
-  async function loadTrend(){
-    const arr = await fetch(`${endpoints.trend}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    const trendContainer = document.getElementById('trendContainer');
-    trendContainer.innerHTML = '';
-    const bySpeaker = {};
-    arr.forEach(o => {
-      if (!bySpeaker[o.speaker_name]) bySpeaker[o.speaker_name] = [];
-      bySpeaker[o.speaker_name].push({meeting_id: o.meeting_id, total_words: +o.total_words});
-    });
-    Object.entries(bySpeaker).forEach(([speaker, data]) => {
-      const id = 'trend_' + speaker.replace(/\s+/g, '_');
-      const wrapper = document.createElement('div');
-      wrapper.className = 'card';
-      wrapper.innerHTML = `<h4 class="font-semibold mb-2">${speaker}</h4><canvas id="${id}"></canvas>`;
-      trendContainer.appendChild(wrapper);
-      const labels = data.map(d => d.meeting_id);
-      const words = data.map(d => d.total_words);
-      renderChart(id, 'line', labels, [words], ['Words'], {});
-    });
-  }
-
-  function renderChart(el, type, labels, datasets, dsLabels, opts){
-    const canvas = typeof el === 'string' ? document.getElementById(el) : el;
-    const ctx = canvas.getContext('2d');
-    if (canvas.chart) canvas.chart.destroy();
-    const defaultColors = ['#3B82F6', '#10B981', '#F97316', '#EF4444'];
-    const colors = opts.colors || defaultColors;
-    canvas.chart = new Chart(ctx, {
-      type,
-      data: {
-        labels,
-        datasets: datasets.map((d, i) => ({
-          label: dsLabels[i],
-          data: d,
-          backgroundColor: colors[i % colors.length],
-          borderColor: colors[i % colors.length],
-          tension: 0.3,
-          fill: false
-        }))
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: opts.stacked ? {stacked: true} : {},
-          y: opts.stacked ? {stacked: true, beginAtZero: true} : {beginAtZero: true, max: opts.max || undefined}
-        },
-        plugins: {legend: {position: 'bottom'}}
+        container.appendChild(outer);
       }
+    }
+
+    async function loadCombined() {
+      const tot = await fetch(endpoints.combined).then(r => r.json());
+      const filt = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+      const names = [...new Set([...tot.map(o => o.speaker_name), ...filt.map(o => o.speaker_name)])];
+      const totMap = Object.fromEntries(tot.map(o => [o.speaker_name, o.avg_compliance_score]));
+      const filtAgg = {};
+      filt.forEach(o => {
+        if (!filtAgg[o.speaker_name]) filtAgg[o.speaker_name] = { sum: 0, c: 0 };
+        filtAgg[o.speaker_name].sum += o.score;
+        filtAgg[o.speaker_name].c++;
+      });
+      const filtMap = Object.fromEntries(Object.entries(filtAgg).map(([s, v]) => [s, (v.sum / v.c).toFixed(1)]));
+      renderChart('combinedComplianceChart', 'bar', names, [names.map(n => totMap[n] || 0), names.map(n => filtMap[n] || 0)], ['Overall', 'Filtered'], { max: 100, colors: ['#3B82F6', '#10B981'] });
+    }
+
+    async function loadStacked() {
+      const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+      renderChart('stackedChart', 'bar', arr.map(o => o.speaker_name), [arr.map(o => +o.total_words), arr.map(o => +o.total_fillers)], ['Total', 'Fillers'], { stacked: true, colors: ['#3B82F6', '#F97316'] });
+    }
+
+    async function loadFiller() {
+      const arr = await fetch(`${endpoints.filler}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+      document.getElementById('fillerBody').innerHTML = arr.map(o => {
+        const percent = o.total_words && o.total_words !== "0" ? ((+o.total_fillers / +o.total_words) * 100).toFixed(2) : "0.00";
+        return `<tr>
+          <td class="border px-3 py-1">${o.speaker_name}</td>
+          <td class="border px-3 py-1">${o.total_words}</td>
+          <td class="border px-3 py-1">${o.total_fillers}</td>
+          <td class="border px-3 py-1">${percent}%</td>
+          <td class="border px-3 py-1">${(+o.avg_score).toFixed(1)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function loadTrend() {
+      const arr = await fetch(`${endpoints.trend}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+      const trendContainer = document.getElementById('trendContainer');
+      trendContainer.innerHTML = '';
+      const bySpeaker = {};
+      arr.forEach(o => {
+        if (!bySpeaker[o.speaker_name]) bySpeaker[o.speaker_name] = [];
+        bySpeaker[o.speaker_name].push({ meeting_id: o.meeting_id, total_words: +o.total_words });
+      });
+      Object.entries(bySpeaker).forEach(([speaker, data]) => {
+        const id = 'trend_' + speaker.replace(/\s+/g, '_');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card';
+        wrapper.innerHTML = `<h4 class="font-semibold mb-2">${speaker}</h4><canvas id="${id}"></canvas>`;
+        trendContainer.appendChild(wrapper);
+        const labels = data.map(d => d.meeting_id);
+        const words = data.map(d => d.total_words);
+        renderChart(id, 'line', labels, [words], ['Words'], {});
+      });
+    }
+
+    function renderChart(el, type, labels, datasets, dsLabels, opts) {
+      const canvas = typeof el === 'string' ? document.getElementById(el) : el;
+      const ctx = canvas.getContext('2d');
+      if (canvas.chart) {
+        canvas.chart.destroy();
+      }
+      const defaultColors = ['#3B82F6', '#10B981', '#F97316', '#EF4444'];
+      const colors = opts.colors || defaultColors;
+      canvas.chart = new Chart(ctx, {
+        type,
+        data: {
+          labels,
+          datasets: datasets.map((d, i) => ({
+            label: dsLabels[i],
+            data: d,
+            backgroundColor: colors[i % colors.length],
+            borderColor: colors[i % colors.length],
+            tension: 0.3,
+            fill: false
+          }))
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: opts.stacked ? { stacked: true } : {},
+            y: opts.stacked ? { stacked: true, beginAtZero: true } : { beginAtZero: true, max: opts.max || undefined }
+          },
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    document.getElementById('filterForm').addEventListener('submit', e => {
+      e.preventDefault();
+      filters.start = document.getElementById('startDate').value;
+      filters.end = document.getElementById('endDate').value;
+      ['combined', 'stacked', 'filler', 'trend', 'lifecycle'].forEach(reload);
     });
-  }
 
-  document.getElementById('filterForm').addEventListener('submit', e => {
-    e.preventDefault();
-    filters.start = document.getElementById('startDate').value;
-    filters.end = document.getElementById('endDate').value;
+    setDefaultDates();
     ['combined', 'stacked', 'filler', 'trend', 'lifecycle'].forEach(reload);
-  });
-
-  setDefaultDates();
-  ['combined', 'stacked', 'filler', 'trend', 'lifecycle'].forEach(reload);
-</script>
+  </script>
 </body>
 </html>
