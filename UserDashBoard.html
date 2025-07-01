@@ -7,35 +7,36 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     canvas { max-height: 200px !important; }
-    .card { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .card { background: #fff; padding:1rem; border-radius:.5rem; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+    .reload-btn { font-size: 0.875rem; color: #2563EB; cursor: pointer; text-decoration: underline; }
   </style>
 </head>
 <body class="p-6 max-w-7xl mx-auto space-y-10">
 
   <h1 class="text-3xl font-bold text-center">🔥 Fireflies Speaker Dashboard</h1>
 
-  <!-- Filter -->
+  <!-- Date Filter -->
   <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
     <div><label>Start Date</label><input type="date" id="startDate" class="border px-3 py-1 rounded"/></div>
     <div><label>End Date</label><input type="date" id="endDate" class="border px-3 py-1 rounded"/></div>
     <button class="bg-blue-600 text-white px-5 py-2 rounded">Apply</button>
   </form>
 
-  <!-- Total Compliance Bar -->
-  <div class="card">
-    <h3 class="font-semibold text-center">Total Compliance Scores</h3>
-    <canvas id="totalComplianceChart"></canvas>
-  </div>
-
-  <!-- Date-Filtered Compliance Chart -->
-  <div class="card">
-    <h3 class="font-semibold text-center">Filtered Compliance Scores</h3>
-    <canvas id="complianceChart"></canvas>
+  <!-- Combined Compliance Chart -->
+  <div class="card space-y-2">
+    <div class="flex justify-between items-center">
+      <h3 class="font-semibold">Compliance Comparison<br><small>Total vs Filtered</small></h3>
+      <span class="reload-btn" onclick="reloadCombined()">↻ Reload</span>
+    </div>
+    <canvas id="combinedComplianceChart"></canvas>
   </div>
 
   <!-- Filler Word Table -->
-  <div class="card overflow-x-auto">
-    <h3 class="font-semibold">Filler Word Percentage</h3>
+  <div class="card space-y-2">
+    <div class="flex justify-between items-center">
+      <h3 class="font-semibold">Filler Word Percentage</h3>
+      <span class="reload-btn" onclick="reloadFiller()">↻ Reload</span>
+    </div>
     <table class="min-w-full text-sm">
       <thead><tr><th>Speaker</th><th>Words</th><th>Fillers</th><th>Filler %</th></tr></thead>
       <tbody id="fillerPercentBody"></tbody>
@@ -43,14 +44,20 @@
   </div>
 
   <!-- Trend Chart per Speaker -->
-  <div class="card">
-    <h3 class="font-semibold">Word Trend (per Meeting)</h3>
+  <div class="card space-y-2">
+    <div class="flex justify-between items-center">
+      <h3 class="font-semibold">Word Trend (per Meeting)</h3>
+      <span class="reload-btn" onclick="reloadTrend()">↻ Reload</span>
+    </div>
     <canvas id="wordTrendContainer"></canvas>
   </div>
 
   <!-- Stacked Words -->
-  <div class="card">
-    <h3 class="font-semibold">Stacked Words vs Fillers</h3>
+  <div class="card space-y-2">
+    <div class="flex justify-between items-center">
+      <h3 class="font-semibold">Stacked Words vs Fillers</h3>
+      <span class="reload-btn" onclick="reloadStacked()">↻ Reload</span>
+    </div>
     <canvas id="stackedChart"></canvas>
   </div>
 
@@ -66,121 +73,129 @@
     filteredCompliance: 'https://n8n.sapidblue.in/webhook/compliance-scores',
     fillerPercent: 'https://n8n.sapidblue.in/webhook/fillerpercent',
     wordTrend: 'https://n8n.sapidblue.in/webhook/word-trend-stats',
-    totalInRegion: 'https://n8n.sapidblue.in/webhook/totalinaregion',
+    stacked: 'https://n8n.sapidblue.in/webhook/totalinaregion',
     userData: 'https://n8n.sapidblue.in/webhook/t_user_Data',
-    meetingData: 'https://n8n.sapidblue.in/webhook/FirelfiesDashbaord'
+    meeting: 'https://n8n.sapidblue.in/webhook/FirelfiesDashbaord'
   };
 
-  function setDefaultDates() {
+  let filters = { start: '', end: '' };
+  function setDefaultDates(){
     const end=new Date(), start=new Date();
     start.setDate(end.getDate()-30);
-    const f=d=>d.toISOString().split('T')[0];
-    document.getElementById('startDate').value=f(start);
-    document.getElementById('endDate').value=f(end);
-    return { start:f(start), end:f(end) };
+    const fmt=d=>d.toISOString().split('T')[0];
+    document.getElementById('startDate').value = filters.start = fmt(start);
+    document.getElementById('endDate').value = filters.end = fmt(end);
   }
 
-  async function drawChart(ctxId, type, data, options={}) {
-    const ctx = document.getElementById(ctxId).getContext('2d');
-    if (ctx.chart) ctx.chart.destroy();
-    ctx.chart = new Chart(ctx, { type, data, options });
+  function reloadCombined(){ loadCombined(); }
+  function reloadFiller(){ loadFiller(); }
+  function reloadTrend(){ loadTrend(); }
+  function reloadStacked(){ loadStacked(); }
+
+  async function loadCombined(){
+    const tot = await fetch(urls.totalCompliance).then(r=>r.json());
+    const filt = await fetch(`${urls.filteredCompliance}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
+    const filtAgg = {};
+    filt.forEach(o => {
+      filtAgg[o.speaker_name] = filtAgg[o.speaker_name] || { sum:0, cnt:0 };
+      filtAgg[o.speaker_name].sum += o.score;
+      filtAgg[o.speaker_name].cnt++;
+    });
+    const speakers = [...new Set([...tot.map(o=>o.speaker_name), ...Object.keys(filtAgg)])].sort();
+    const totMap = Object.fromEntries(tot.map(o=>[o.speaker_name, o.avg_compliance_score]));
+    const filtMap = Object.fromEntries(Object.entries(filtAgg).map(([s,v])=>[s,(v.sum/v.cnt).toFixed(1)]));
+    const data = { labels: speakers, datasets:[
+      { label:'Overall', data: speakers.map(s=>totMap[s]||0), backgroundColor:'#10B981' },
+      { label:'Filtered', data: speakers.map(s=>filtMap[s]||0), backgroundColor:'#3B82F6' }
+    ]};
+    drawChart('combinedComplianceChart','bar',data,{scales:{y:{beginAtZero:true,max:100}},plugins:{legend:{position:'bottom'}}});
   }
 
-  async function loadDashboard(start, end) {
-    const [
-      totCompr, filtCompr, filler, trend, stacked, usrData, meetData
-    ] = await Promise.all([
-      fetch(urls.totalCompliance).then(r=>r.json()),
-      fetch(`${urls.filteredCompliance}?start_date=${start}&end_date=${end}`).then(r=>r.json()),
-      fetch(`${urls.fillerPercent}?start_date=${start}&end_date=${end}`).then(r=>r.json()),
-      fetch(`${urls.wordTrend}?start_date=${start}&end_date=${end}`).then(r=>r.json()),
-      fetch(`${urls.totalInRegion}?start_date=${start}&end_date=${end}`).then(r=>r.json()),
-      fetch(urls.userData).then(r=>r.json()),
-      fetch(`${urls.meetingData}?start_date=${start}&end_date=${end}`).then(r=>r.json())
-    ]);
-
-    // total compliance
-    await drawChart('totalComplianceChart', 'bar', {
-      labels: totCompr.map(o=>o.speaker_name),
-      datasets: [{ label:'Avg Compliance', data: totCompr.map(o=>o.avg_compliance_score), backgroundColor:'#10B981' }]
-    }, { scales:{y:{beginAtZero:true, max:100}}, plugins:{legend:{display:false}} });
-
-    // filtered compliance
-    await drawChart('complianceChart', 'bar', {
-      labels: filtCompr.map(o=>o.speaker_name),
-      datasets: [{ label:'Filtered Score', data: filtCompr.map(o=>o.score), backgroundColor:'#3B82F6' }]
-    }, { scales:{y:{beginAtZero:true, max:100}}, plugins:{legend:{display:false}} });
-
-    // filler percentage table
-    const fp = filler;
-    document.getElementById('fillerPercentBody').innerHTML = fp.map(o=>`
+  async function loadFiller(){
+    const filler = await fetch(`${urls.fillerPercent}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
+    document.getElementById('fillerPercentBody').innerHTML = filler.map(o=>`
       <tr><td>${o.speaker_name}</td><td>${o.word_count}</td><td>${o.total_fillers}</td><td>${o.filler_percent}%</td></tr>`).join('');
+  }
 
-    // word trend chart
-    const labelsTrend = trend.map(o=>o.meeting_id);
-    const dataTrend = trend.map(o=>o.total_words);
-    await drawChart('wordTrendContainer','line',{
-      labels: labelsTrend, datasets:[{ label:'Words', data:dataTrend, borderColor:'#3B82F6', tension:0.3 }]
-    }, { scales:{y:{beginAtZero:true}}, plugins:{legend:{position:'bottom'}} });
+  async function loadTrend(){
+    const trend = await fetch(`${urls.wordTrend}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
+    const data = { labels: trend.map(o=>o.meeting_id), datasets:[{label:'Words', data:trend.map(o=>o.total_words), borderColor:'#3B82F6', tension:0.3}]};
+    drawChart('wordTrendContainer','line',data,{scales:{y:{beginAtZero:true}},plugins:{legend:{position:'bottom'}}});
+  }
 
-    // stacked chart
-    await drawChart('stackedChart','bar',{
-      labels: stacked.map(o=>o.speaker_name),
-      datasets:[
-        { label:'Words', data:stacked.map(o=>o.total_words), backgroundColor:'#3B82F6' },
-        { label:'Fillers', data:stacked.map(o=>o.total_fillers), backgroundColor:'#F97316' }
-      ]
-    }, { scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}, plugins:{legend:{position:'bottom'}} });
+  async function loadStacked(){
+    const stacked = await fetch(`${urls.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
+    const data = { labels: stacked.map(o=>o.speaker_name), datasets:[
+      { label:'Total Words', data:stacked.map(o=>o.total_words), backgroundColor:'#3B82F6' },
+      { label:'Filler Words', data:stacked.map(o=>o.total_fillers), backgroundColor:'#F97316' }
+    ] };
+    drawChart('stackedChart','bar',data,{scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},plugins:{legend:{position:'bottom'}}});
+  }
 
-    // user cards
-    const userCards = document.getElementById('userCards');
-    userCards.innerHTML = usrData.map(o=>`
+  function drawChart(el, type, data, opts){
+    const ctx=document.getElementById(el).getContext('2d');
+    if(ctx.chart) ctx.chart.destroy();
+    ctx.chart=new Chart(ctx,{type,data,options:{responsive:false,...opts}});
+  }
+
+  async function loadUserCards(){
+    const usr = await fetch(urls.userData).then(r=>r.json());
+    document.getElementById('userCards').innerHTML = usr.map(o=>`
       <div class="card">
         <h4 class="font-semibold">${o.speaker_name}</h4>
         <p>Words: ${o.word_count}</p>
         <p>Fillers: ${o.filler_words}</p>
-        <p>Filler %: ${o.filler_words && o.word_count ? ((o.filler_words/o.word_count)*100).toFixed(2) : '0.00'}%</p>
+        <p>Filler %: ${o.word_count?((o.filler_words/o.word_count)*100).toFixed(2):'0.00'}%</p>
         <p>Avg Contribution: ${o.avg_contribution_pct}%</p>
         <p>Avg Compliance: ${o.avg_compliance_score}%</p>
       </div>`).join('');
+  }
 
-    // meeting cards
-    const meetCards = document.getElementById('meetingCards');
-    meetCards.innerHTML = '';
+  async function loadMeetingCards(){
+    const meet = await fetch(`${urls.meeting}?start_date=${filters.start}&end_date=${filters.end}`).then(r=>r.json());
     const grouped = {};
-    meetData.filter(x=>x.meeting_id).forEach(o=> {
-      grouped[o.meeting_id] = grouped[o.meeting_id]||[];
+    meet.filter(x=>x.meeting_id).forEach(o=>{
+      grouped[o.meeting_id]=grouped[o.meeting_id]||[];
       grouped[o.meeting_id].push(o);
     });
-    Object.entries(grouped).forEach(([mid, arr])=>{
-      const items = arr.filter((v,i,self)=>
-        self.findIndex(x=>x.speaker_name===v.speaker_name && x.email===v.email)===i
-      );
-      let html = `<div class="card"><h4 class="font-semibold">Meeting: ${mid}</h4>`;
-      items.forEach(o=>{
-        const fPct = o.word_count ? ((o.filler_estimate/o.word_count)*100).toFixed(2) : '0.00';
-        html += `<div class="border p-2 mb-2">
+    document.getElementById('meetingCards').innerHTML = Object.entries(grouped).map(([mid, arr])=>{
+      const seen=new Set();
+      const items = arr.filter(o=>{
+        const key=o.speaker_name+o.email;
+        if(seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+      const speakersHtml = items.map(o=>{
+        const fp = o.word_count?((o.filler_estimate/o.word_count)*100).toFixed(2):'0.00';
+        return `<div class="border p-2 mb-2">
           <strong>${o.speaker_name}</strong><br/>
-          Words: ${o.word_count} • Fillers: ${o.filler_estimate} • Filler %: ${fPct}%<br/>
+          Words: ${o.word_count} • Fillers: ${o.filler_estimate} • Filler %: ${fp}%<br/>
           Contribution: ${o.word_contribution_pct}% • Compliance: ${o.score}%<br/>
           ✔️ Matched: ${o.matched_topics||'N/A'}<br/>
           ❌ Missed: ${o.missed_topics||'N/A'}
         </div>`;
-      });
-      html += `</div>`;
-      meetCards.insertAdjacentHTML('beforeend', html);
-    });
+      }).join('');
+      return `<div class="card"><h4 class="font-semibold">Meeting: ${mid}</h4>${speakersHtml}</div>`;
+    }).join('');
   }
 
-  document.getElementById('filterForm').addEventListener('submit', e=>{
+  async function refreshAll(){
+    await loadCombined();
+    await loadFiller();
+    await loadTrend();
+    await loadStacked();
+    await loadUserCards();
+    await loadMeetingCards();
+  }
+
+  document.getElementById('filterForm').addEventListener('submit',e=>{
     e.preventDefault();
-    const s = document.getElementById('startDate').value;
-    const e2 = document.getElementById('endDate').value;
-    loadDashboard(s, e2);
+    filters.start = document.getElementById('startDate').value;
+    filters.end = document.getElementById('endDate').value;
+    refreshAll();
   });
 
-  const { start, end } = setDefaultDates();
-  loadDashboard(start, end);
+  setDefaultDates(); refreshAll();
 
 </script>
 </body>
