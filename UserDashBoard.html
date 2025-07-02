@@ -208,20 +208,47 @@
     }
   }
 
-  async function loadCombined(){
-    const tot = await fetch(endpoints.combined).then(r => r.json());
-    const filt = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    const names = [...new Set([...tot.map(o => o.speaker_name), ...filt.map(o => o.speaker_name)])];
-    const totMap = Object.fromEntries(tot.map(o => [o.speaker_name, o.avg_compliance_score]));
-    const filtAgg = {};
-    filt.forEach(o => {
-      if (!filtAgg[o.speaker_name]) filtAgg[o.speaker_name] = {sum: 0, c: 0};
-      filtAgg[o.speaker_name].sum += o.score;
-      filtAgg[o.speaker_name].c++;
+async function loadCombined(){
+  try {
+    const totArr = await fetch(endpoints.combined).then(r => r.json());
+    const filteredArr = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
+
+    const overallMap = {};
+    totArr.forEach(o => {
+      if (o.speaker_name && !isNaN(o.avg_compliance_score)) {
+        overallMap[o.speaker_name] = +o.avg_compliance_score;
+      }
     });
-    const filtMap = Object.fromEntries(Object.entries(filtAgg).map(([s, v]) => [s, (v.sum / v.c).toFixed(1)]));
-    renderChart('combinedComplianceChart', 'bar', names, [names.map(n => totMap[n] || 0), names.map(n => filtMap[n] || 0)], ['Overall', 'Filtered'], {max: 100, colors: ['#3B82F6', '#10B981']});
+
+    const filteredMap = {};
+    filteredArr.forEach(o => {
+      if (o.speaker_name && !isNaN(o.avg_score)) {
+        filteredMap[o.speaker_name] = +o.avg_score;
+      }
+    });
+
+    const allSpeakers = Array.from(new Set([
+      ...Object.keys(overallMap),
+      ...Object.keys(filteredMap)
+    ])).sort();
+
+    const totalScores = allSpeakers.map(name => overallMap[name] || 0);
+    const filteredScores = allSpeakers.map(name => filteredMap[name] || 0);
+
+    renderChart(
+      'combinedComplianceChart',
+      'bar',
+      allSpeakers,
+      [totalScores, filteredScores],
+      ['Overall Avg (≥3%)', 'Filtered Avg (≥3% & date)'],
+      { max: 100, colors: ['#3B82F6', '#10B981'] }
+    );
+  } catch (err) {
+    console.error("Error in loadCombined:", err);
+    alert("Failed to load compliance data. Check console for errors.");
   }
+}
+
 
   async function loadStacked(){
     const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
