@@ -12,43 +12,14 @@
   <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold mb-4">Job Listings</h1>
 
-    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
       <input type="text" placeholder="Search Title / Company" x-model="search" class="px-4 py-2 border rounded" />
       
-      <select x-model="selectedTitle" class="px-4 py-2 border rounded">
-        <option value="">All Titles</option>
-        <template x-for="item in uniqueTitles" :key="item">
-          <option x-text="item"></option>
-        </template>
-      </select>
+      <input type="text" placeholder="Search Location" x-model="locationSearch" class="px-4 py-2 border rounded" />
 
-      <select x-model="selectedCompany" class="px-4 py-2 border rounded">
-        <option value="">All Companies</option>
-        <template x-for="item in uniqueCompanies" :key="item">
-          <option x-text="item"></option>
-        </template>
-      </select>
-
-      <select x-model="selectedLocation" class="px-4 py-2 border rounded">
-        <option value="">All Locations</option>
-        <template x-for="item in uniqueLocations" :key="item">
-          <option x-text="item"></option>
-        </template>
-      </select>
-
-      <select x-model="selectedPostedAt" class="px-4 py-2 border rounded">
-        <option value="">All Posted Dates</option>
-        <template x-for="item in uniquePostedAt" :key="item">
-          <option x-text="item"></option>
-        </template>
-      </select>
-
-      <select x-model="selectedEmployees" class="px-4 py-2 border rounded">
-        <option value="">All Sizes</option>
-        <template x-for="item in uniqueEmployees" :key="item">
-          <option x-text="item"></option>
-        </template>
-      </select>
+      <input type="number" placeholder="Min Employees" x-model.number="minEmployees" class="px-4 py-2 border rounded" />
+      
+      <input type="number" placeholder="Max Employees" x-model.number="maxEmployees" class="px-4 py-2 border rounded" />
     </div>
 
     <div class="mb-4 flex flex-col sm:flex-row gap-2">
@@ -107,39 +78,20 @@
       return {
         jobs: [],
         search: '',
-        selectedTitle: '',
-        selectedCompany: '',
-        selectedLocation: '',
-        selectedPostedAt: '',
-        selectedEmployees: '',
+        locationSearch: '',
+        minEmployees: '',
+        maxEmployees: '',
         sequenceId: null,
-
-        get uniqueTitles() {
-          return [...new Set(this.jobs.map(j => j.title).filter(Boolean))];
-        },
-        get uniqueCompanies() {
-          return [...new Set(this.jobs.map(j => j.companyName).filter(Boolean))];
-        },
-        get uniqueLocations() {
-          return [...new Set(this.jobs.map(j => j.location).filter(Boolean))];
-        },
-        get uniquePostedAt() {
-          return [...new Set(this.jobs.map(j => j.postedAt).filter(Boolean))];
-        },
-        get uniqueEmployees() {
-          return [...new Set(this.jobs.map(j => j.companyEmployeesCount).filter(Boolean))];
-        },
 
         get filteredJobs() {
           const term = this.search.toLowerCase();
           return this.jobs.filter(job => {
             const matchesSearch = !term || job.title?.toLowerCase().includes(term) || job.companyName?.toLowerCase().includes(term);
-            const matchesTitle = !this.selectedTitle || job.title === this.selectedTitle;
-            const matchesCompany = !this.selectedCompany || job.companyName === this.selectedCompany;
-            const matchesLocation = !this.selectedLocation || job.location === this.selectedLocation;
-            const matchesPostedAt = !this.selectedPostedAt || job.postedAt === this.selectedPostedAt;
-            const matchesEmployees = !this.selectedEmployees || job.companyEmployeesCount === this.selectedEmployees;
-            return matchesSearch && matchesTitle && matchesCompany && matchesLocation && matchesPostedAt && matchesEmployees;
+            const matchesLocation = !this.locationSearch || job.location?.toLowerCase().includes(this.locationSearch.toLowerCase());
+            const employees = parseInt(job.companyEmployeesCount) || 0;
+            const matchesMin = !this.minEmployees || employees >= this.minEmployees;
+            const matchesMax = !this.maxEmployees || employees <= this.maxEmployees;
+            return matchesSearch && matchesLocation && matchesMin && matchesMax;
           });
         },
 
