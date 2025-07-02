@@ -53,9 +53,7 @@
           </div>
           <div class="mb-3">
             <label class="block text-sm font-medium">LinkedIn URL</label>
-            <input type="url" x-model="form.url" class="w-full border px-2 py-1 rounded" required
-              pattern="https?://(www\.)?linkedin\.com/.*"
-              title="Please enter a valid LinkedIn URL (e.g., https://www.linkedin.com/...)" />
+            <input type="url" x-model="form.url" class="w-full border px-2 py-1 rounded" required pattern="https?://(www\.)?linkedin\.com/.*" title="Only LinkedIn URLs are allowed">
           </div>
           <div class="mb-3">
             <label class="block text-sm font-medium">Count</label>
@@ -91,7 +89,8 @@
               </td>
               <td class="p-2" x-text="seq.count"></td>
               <td class="p-2">
-                <span :class="seq.status === 'complete' ? 'text-green-600' : 'text-yellow-600'" x-text="seq.status"></span>
+                <span :class="seq.status === 'complete' ? 'text-green-600' : 'text-yellow-600'" 
+                      x-text="seq.status === 'loading' ? 'load...' : seq.status"></span>
               </td>
               <td class="p-2" x-text="seq.created_at"></td>
               <td class="p-2">
@@ -99,16 +98,14 @@
                   <template x-if="seq.status === 'complete'">
                     <a href="#" @click.prevent="viewJob(seq.id)" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">View</a>
                   </template>
-                  <template x-if="seq.status !== 'complete'">
-                    <button
-                      @click="runJob(seq.id)"
-                      class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-2"
-                    >
-                      <template x-if="seq.status === 'running' || seq.status === 'load...'">
-                        <span class="loader"></span>
-                      </template>
-                      <span x-show="!(seq.status === 'running' || seq.status === 'load...')">Run</span>
+                  <template x-if="seq.status === 'load...' || seq.status === 'loading'">
+                    <button @click="runJob(seq.id)"
+                      class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1">
+                      ▶️ <span>Run</span>
                     </button>
+                  </template>
+                  <template x-if="seq.status === 'running'">
+                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm font-medium">⏳ Running</span>
                   </template>
                   <button
                     @click="deleteSequence(seq.id)"
@@ -165,7 +162,10 @@
             .then(res => res.json())
             .then(data => {
               if (Array.isArray(data)) {
-                this.sequences = data.map(seq => ({ ...seq }));
+                this.sequences = data.map(seq => ({
+                  ...seq,
+                  status: seq.status === 'loading' ? 'load...' : seq.status
+                }));
               }
             })
             .catch(() => alert('Failed to fetch sequences.'));
