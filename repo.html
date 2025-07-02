@@ -1,53 +1,63 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-gray-100">
+<html lang="en" class="bg-gray-50">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SapidBlue Unified Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-100 to-white">
+<body class="min-h-screen bg-gradient-to-br from-white via-blue-50 to-blue-100 flex flex-col items-center justify-start py-12 px-4 sm:px-6 lg:px-8">
 
   <!-- Header -->
-  <div class="text-center mb-10">
-    <h1 class="text-4xl font-bold text-gray-800 mb-2">🚀 SapidBlue Unified Dashboard</h1>
-    <p class="text-lg text-gray-600">Central access to your automation and analytics tools</p>
+  <div class="text-center mb-12">
+    <h1 class="text-5xl font-extrabold text-gray-800 mb-3">🚀 SapidBlue Unified Dashboard</h1>
+    <p class="text-lg text-gray-600">One place to manage all automation tools and analytics</p>
   </div>
 
-  <!-- Dashboard Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
+  <!-- Dashboard Cards Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full max-w-5xl">
 
     <!-- Fireflies Team Dashboard -->
     <a href="https://prabhas98789.github.io/Job-scraper/UserDashBoard.html" target="_blank"
-       class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-blue-300 border hover:border-blue-500 transition duration-300 group">
-      <h2 class="text-2xl font-semibold text-blue-700 group-hover:underline">🧑‍💼 Fireflies Team Dashboard</h2>
-      <p class="text-gray-600 mt-2">Analyze meetings, evaluate speaker scores, and track team contributions.</p>
+       class="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl border border-transparent hover:border-blue-500 transition-all duration-300 transform hover:-translate-y-1 group">
+      <h2 class="text-2xl font-semibold text-blue-700 group-hover:underline flex items-center">
+        🧑‍💼 Fireflies Dashboard
+      </h2>
+      <p class="text-gray-600 mt-3 text-base">Analyze meetings, evaluate speaker scores, and track team contributions.</p>
     </a>
 
     <!-- LinkedIn Sequence Automation -->
     <a href="https://prabhas98789.github.io/jd-review/V4.html" target="_blank"
-       class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-blue-300 border hover:border-blue-500 transition duration-300 group">
-      <h2 class="text-2xl font-semibold text-green-700 group-hover:underline">📄 LinkedIn Sequence Automation</h2>
-      <p class="text-gray-600 mt-2">Submit and customize job descriptions for automated LinkedIn outreach. (In Progress)</p>
+       class="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl border border-transparent hover:border-green-500 transition-all duration-300 transform hover:-translate-y-1 group">
+      <h2 class="text-2xl font-semibold text-green-700 group-hover:underline flex items-center">
+        📄 LinkedIn Automation
+        <span class="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">In Progress</span>
+      </h2>
+      <p class="text-gray-600 mt-3 text-base">Submit and customize job descriptions for automated LinkedIn outreach.</p>
     </a>
 
     <!-- LinkedIn Job Scraping -->
     <a href="https://prabhas98789.github.io/Job-scraper/sequence.html" target="_blank"
-       class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-blue-300 border hover:border-blue-500 transition duration-300 group">
-      <h2 class="text-2xl font-semibold text-purple-700 group-hover:underline">📦 LinkedIn Job Scraping</h2>
-      <p class="text-gray-600 mt-2">Launch and monitor scraping sequences for job listings on LinkedIn.</p>
+       class="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl border border-transparent hover:border-purple-500 transition-all duration-300 transform hover:-translate-y-1 group">
+      <h2 class="text-2xl font-semibold text-purple-700 group-hover:underline flex items-center">
+        📦 LinkedIn Scraping
+      </h2>
+      <p class="text-gray-600 mt-3 text-base">Launch and monitor scraping sequences for LinkedIn job listings.</p>
     </a>
 
     <!-- Skip List Management -->
     <a href="https://prabhas98789.github.io/Job-scraper/skiplist.html" target="_blank"
-       class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-blue-300 border hover:border-blue-500 transition duration-300 group">
-      <h2 class="text-2xl font-semibold text-red-700 group-hover:underline">⛔ Skip List Management</h2>
-      <p class="text-gray-600 mt-2">Manage excluded companies to refine and filter your job scraping results.</p>
+       class="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl border border-transparent hover:border-red-500 transition-all duration-300 transform hover:-translate-y-1 group">
+      <h2 class="text-2xl font-semibold text-red-700 group-hover:underline flex items-center">
+        ⛔ Skip List
+      </h2>
+      <p class="text-gray-600 mt-3 text-base">Manage unwanted companies to improve scraping precision and avoid duplicates.</p>
     </a>
+
   </div>
 
   <!-- Footer -->
-  <footer class="mt-12 text-gray-500 text-sm">
+  <footer class="mt-16 text-gray-500 text-sm">
     © 2025 SapidBlue | Built by Prabhas Bhargav
   </footer>
 
