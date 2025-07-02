@@ -14,11 +14,8 @@
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
       <input type="text" placeholder="Search Title / Company" x-model="search" class="px-4 py-2 border rounded" />
-      
       <input type="text" placeholder="Search Location" x-model="locationSearch" class="px-4 py-2 border rounded" />
-
       <input type="number" placeholder="Min Employees" x-model.number="minEmployees" class="px-4 py-2 border rounded" />
-      
       <input type="number" placeholder="Max Employees" x-model.number="maxEmployees" class="px-4 py-2 border rounded" />
     </div>
 
@@ -59,7 +56,12 @@
                 <td class="px-4 py-2 text-gray-900" x-text="job.companyEmployeesCount"></td>
                 <td class="px-4 py-2 text-gray-900 space-x-1">
                   <button @click="viewJob(job.internal_id)" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">View</button>
-                  <button @click="deleteJob(job.internal_id)" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+                  <button @click="deleteJob(job.internal_id)" class="p-2 bg-red-600 text-white rounded hover:bg-red-700" title="Delete">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m0 0H5m14 0h-2" />
+                    </svg>
+                  </button>
                 </td>
               </tr>
             </template>
