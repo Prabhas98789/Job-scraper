@@ -189,20 +189,61 @@
     }
   }
 
-  async function loadCombined(){
-    const tot = await fetch(endpoints.combined).then(r => r.json());
-    const filt = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    const names = [...new Set([...tot.map(o => o.speaker_name), ...filt.map(o => o.speaker_name)])];
-    const totMap = Object.fromEntries(tot.map(o => [o.speaker_name, o.avg_compliance_score]));
-    const filtAgg = {};
-    filt.forEach(o => {
-      if (!filtAgg[o.speaker_name]) filtAgg[o.speaker_name] = {sum: 0, c: 0};
-      filtAgg[o.speaker_name].sum += o.score;
-      filtAgg[o.speaker_name].c++;
-    });
-    const filtMap = Object.fromEntries(Object.entries(filtAgg).map(([s, v]) => [s, (v.sum / v.c).toFixed(1)]));
-    renderChart('combinedComplianceChart', 'bar', names, [names.map(n => totMap[n] || 0), names.map(n => filtMap[n] || 0)], ['Overall', 'Filtered'], {max: 100, colors: ['#3B82F6', '#10B981']});
+async function loadCombined() {
+  // 1. Fetch overall averages (t_data)
+  const totArr = await fetch(endpoints.combined).then(r => r.json());
+  //    [ { speaker_name, avg_compliance_score }, … ]
+
+  // 2. Fetch detailed per‑meeting scores (compliance‑scores)
+  const raw = await fetch(
+    `${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`
+  ).then(r => r.json());
+  //    [ { meeting_id, speaker_name, score, … }, … ]
+
+  // 3. Deduplicate by meeting + speaker
+  const seen = new Set();
+  const deduped = raw.filter(o => {
+    const key = `${o.meeting_id}||${o.speaker_name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // 4. Compute filtered average per speaker
+  const sums = {}, counts = {};
+  deduped.forEach(o => {
+    sums[o.speaker_name]   = (sums[o.speaker_name]   || 0) + o.score;
+    counts[o.speaker_name] = (counts[o.speaker_name] || 0) + 1;
+  });
+  const filtMap = {};
+  for (const sp of Object.keys(sums)) {
+    filtMap[sp] = +(sums[sp] / counts[sp]).toFixed(1);
   }
+
+  // 5. Build unified speaker list
+  const speakers = [
+    ...new Set([
+      ...totArr.map(o => o.speaker_name),
+      ...Object.keys(filtMap)
+    ])
+  ];
+
+  // 6. Align data arrays
+  const totalScores    = speakers.map(s => +(
+    totArr.find(o => o.speaker_name === s)?.avg_compliance_score || 0
+  ));
+  const filteredScores = speakers.map(s => filtMap[s] || 0);
+
+  // 7. Render the bar chart
+  renderChart(
+    'combinedComplianceChart',
+    'bar',
+    speakers,
+    [ totalScores, filteredScores ],
+    ['Overall Avg (≥3%)', 'Filtered Avg (≥3% & date)'],
+    { max: 100, colors: ['#3B82F6', '#10B981'] }
+  );
+}
 
   async function loadStacked(){
     const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
