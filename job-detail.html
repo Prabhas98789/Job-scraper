@@ -10,17 +10,56 @@
 </head>
 <body class="p-4 md:p-6" x-data="jobDetailPage()" x-init="fetchJobs()">
   <div class="max-w-7xl mx-auto">
-    <h1 class="text-2xl md:text-3xl font-bold mb-6">Job Listings</h1>
+    <h1 class="text-3xl font-bold mb-4">Job Listings</h1>
 
-    <div class="mb-4 flex flex-col md:flex-row md:items-center gap-3">
-      <input type="text" placeholder="Search job title or company..." x-model="search"
-        class="px-4 py-2 border rounded w-full md:w-1/3" />
-      <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-        <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 w-full sm:w-auto"
-          @click="downloadExcel">Download Excel</button>
-        <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 w-full sm:w-auto"
-          @click="goBack">Back to Sequences</button>
-      </div>
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
+      <input type="text" placeholder="Search Title / Company" x-model="search" class="px-4 py-2 border rounded" />
+      
+      <select x-model="selectedTitle" class="px-4 py-2 border rounded">
+        <option value="">All Titles</option>
+        <template x-for="item in uniqueTitles" :key="item">
+          <option x-text="item"></option>
+        </template>
+      </select>
+
+      <select x-model="selectedCompany" class="px-4 py-2 border rounded">
+        <option value="">All Companies</option>
+        <template x-for="item in uniqueCompanies" :key="item">
+          <option x-text="item"></option>
+        </template>
+      </select>
+
+      <select x-model="selectedLocation" class="px-4 py-2 border rounded">
+        <option value="">All Locations</option>
+        <template x-for="item in uniqueLocations" :key="item">
+          <option x-text="item"></option>
+        </template>
+      </select>
+
+      <select x-model="selectedPostedAt" class="px-4 py-2 border rounded">
+        <option value="">All Posted Dates</option>
+        <template x-for="item in uniquePostedAt" :key="item">
+          <option x-text="item"></option>
+        </template>
+      </select>
+
+      <select x-model="selectedEmployees" class="px-4 py-2 border rounded">
+        <option value="">All Sizes</option>
+        <template x-for="item in uniqueEmployees" :key="item">
+          <option x-text="item"></option>
+        </template>
+      </select>
+    </div>
+
+    <div class="mb-4 flex flex-col sm:flex-row gap-2">
+      <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 w-full sm:w-auto"
+        @click="downloadExcel">Download Excel</button>
+      <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 w-full sm:w-auto"
+        @click="goBack">Back to Sequences</button>
+    </div>
+
+    <div class="mb-4 text-gray-700 font-medium" x-show="filteredJobs.length">
+      Showing <span x-text="filteredJobs.length"></span> jobs
     </div>
 
     <template x-if="filteredJobs.length > 0">
@@ -28,26 +67,26 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
           <thead class="bg-gray-200">
             <tr>
-              <th class="px-4 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Title</th>
-              <th class="px-4 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Company</th>
-              <th class="px-4 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Location</th>
-              <th class="px-4 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Posted At</th>
-              <th class="px-4 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Employees</th>
-              <th class="px-4 py-2 text-left font-medium text-gray-700 whitespace-nowrap">Actions</th>
+              <th class="px-4 py-2 text-left font-medium text-gray-700">Title</th>
+              <th class="px-4 py-2 text-left font-medium text-gray-700">Company</th>
+              <th class="px-4 py-2 text-left font-medium text-gray-700">Location</th>
+              <th class="px-4 py-2 text-left font-medium text-gray-700">Posted At</th>
+              <th class="px-4 py-2 text-left font-medium text-gray-700">Employees</th>
+              <th class="px-4 py-2 text-left font-medium text-gray-700">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             <template x-for="job in filteredJobs" :key="job.internal_id">
               <tr>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-900" x-text="job.title"></td>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-900 flex items-center gap-2">
+                <td class="px-4 py-2 text-gray-900" x-text="job.title"></td>
+                <td class="px-4 py-2 text-gray-900 flex items-center gap-2">
                   <img :src="job.companyLogo" alt="logo" class="w-8 h-8 object-contain rounded" />
                   <span x-text="job.companyName"></span>
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-900" x-text="job.location"></td>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-900" x-text="job.postedAt"></td>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-900" x-text="job.companyEmployeesCount"></td>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-900 space-x-1">
+                <td class="px-4 py-2 text-gray-900" x-text="job.location"></td>
+                <td class="px-4 py-2 text-gray-900" x-text="job.postedAt"></td>
+                <td class="px-4 py-2 text-gray-900" x-text="job.companyEmployeesCount"></td>
+                <td class="px-4 py-2 text-gray-900 space-x-1">
                   <button @click="viewJob(job.internal_id)" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">View</button>
                   <button @click="deleteJob(job.internal_id)" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
                 </td>
@@ -68,15 +107,40 @@
       return {
         jobs: [],
         search: '',
+        selectedTitle: '',
+        selectedCompany: '',
+        selectedLocation: '',
+        selectedPostedAt: '',
+        selectedEmployees: '',
         sequenceId: null,
 
+        get uniqueTitles() {
+          return [...new Set(this.jobs.map(j => j.title).filter(Boolean))];
+        },
+        get uniqueCompanies() {
+          return [...new Set(this.jobs.map(j => j.companyName).filter(Boolean))];
+        },
+        get uniqueLocations() {
+          return [...new Set(this.jobs.map(j => j.location).filter(Boolean))];
+        },
+        get uniquePostedAt() {
+          return [...new Set(this.jobs.map(j => j.postedAt).filter(Boolean))];
+        },
+        get uniqueEmployees() {
+          return [...new Set(this.jobs.map(j => j.companyEmployeesCount).filter(Boolean))];
+        },
+
         get filteredJobs() {
-          if (!this.search.trim()) return this.jobs;
           const term = this.search.toLowerCase();
-          return this.jobs.filter(job =>
-            job.title?.toLowerCase().includes(term) ||
-            job.companyName?.toLowerCase().includes(term)
-          );
+          return this.jobs.filter(job => {
+            const matchesSearch = !term || job.title?.toLowerCase().includes(term) || job.companyName?.toLowerCase().includes(term);
+            const matchesTitle = !this.selectedTitle || job.title === this.selectedTitle;
+            const matchesCompany = !this.selectedCompany || job.companyName === this.selectedCompany;
+            const matchesLocation = !this.selectedLocation || job.location === this.selectedLocation;
+            const matchesPostedAt = !this.selectedPostedAt || job.postedAt === this.selectedPostedAt;
+            const matchesEmployees = !this.selectedEmployees || job.companyEmployeesCount === this.selectedEmployees;
+            return matchesSearch && matchesTitle && matchesCompany && matchesLocation && matchesPostedAt && matchesEmployees;
+          });
         },
 
         fetchJobs() {
@@ -91,9 +155,7 @@
           })
           .then(res => res.json())
           .then(data => {
-            if (Array.isArray(data)) {
-              this.jobs = data;
-            }
+            if (Array.isArray(data)) this.jobs = data;
           })
           .catch(() => alert('Failed to fetch job data.'));
         },
@@ -120,8 +182,8 @@
         },
 
         downloadExcel() {
-          if (!this.jobs.length) return;
-          const ws = XLSX.utils.json_to_sheet(this.jobs);
+          if (!this.filteredJobs.length) return;
+          const ws = XLSX.utils.json_to_sheet(this.filteredJobs);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, 'Jobs');
           XLSX.writeFile(wb, 'job_data.xlsx');
@@ -130,7 +192,7 @@
         goBack() {
           window.location.href = 'sequence.html';
         }
-      }
+      };
     }
   </script>
 </body>
