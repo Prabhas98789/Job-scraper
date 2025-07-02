@@ -1,102 +1,114 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-gray-100 text-gray-800">
+<html lang="en" class="h-full bg-gradient-to-br from-blue-100 to-white text-gray-800">
 <head>
   <meta charset="UTF-8"/>
   <title>Fireflies Speaker Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    html, body {
+      height: 100%;
+      min-height: 100%;
+    }
     canvas { max-height: 300px; }
     .card { background:#fff; padding:1rem; border-radius:.5rem; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
     .reload-btn { font-size:.875rem; color:#2563EB; cursor:pointer; text-decoration:underline; }
   </style>
 </head>
-<body class="p-6 max-w-7xl mx-auto space-y-8 bg-gradient-to-br from-blue-100 to-white">
+<body class="h-full min-h-screen flex flex-col p-4 md:p-6">
 
-  <!-- Back Button -->
-  <div class="flex justify-start mb-4">
-    <a href="https://prabhas98789.github.io/Job-scraper/repo.html" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 transition">
-      ← Back to Dashboard
-    </a>
+  <!-- Page Container -->
+  <div class="w-full max-w-7xl mx-auto space-y-8 flex-grow">
+
+    <!-- Back Button -->
+    <div class="flex justify-start mb-4">
+      <a href="https://prabhas98789.github.io/Job-scraper/repo.html"
+         class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 transition">
+        ← Back to Dashboard
+      </a>
+    </div>
+
+    <!-- Title -->
+    <h1 class="text-4xl font-bold text-center text-gray-900">🔥 Fireflies Speaker Dashboard</h1>
+    <div id="summaryBox" class="text-center text-sm text-gray-600 mt-1"></div>
+
+    <!-- Date Filter Form -->
+    <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
+      <label class="flex flex-col">
+        <span>Start Date</span>
+        <input type="date" id="startDate" class="border px-3 py-1 rounded"/>
+      </label>
+      <label class="flex flex-col">
+        <span>End Date</span>
+        <input type="date" id="endDate" class="border px-3 py-1 rounded"/>
+      </label>
+      <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded">Apply</button>
+    </form>
+
+    <!-- Charts + Tables -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+
+      <!-- Compliance Chart -->
+      <div class="card">
+        <div class="flex justify-between mb-2">
+          <h3 class="font-semibold">Compliance: Total vs Filtered</h3>
+          <span class="reload-btn" onclick="reload('combined')">↻ Reload</span>
+        </div>
+        <canvas id="combinedComplianceChart"></canvas>
+      </div>
+
+      <!-- Stacked Chart -->
+      <div class="card">
+        <div class="flex justify-between mb-2">
+          <h3 class="font-semibold">Stacked Words vs Fillers</h3>
+          <span class="reload-btn" onclick="reload('stacked')">↻ Reload</span>
+        </div>
+        <canvas id="stackedChart"></canvas>
+      </div>
+
+      <!-- Filler Table -->
+      <div class="card col-span-full overflow-x-auto">
+        <div class="flex justify-between mb-2">
+          <h3 class="font-semibold">Filler Word %</h3>
+          <span class="reload-btn" onclick="reload('filler')">↻ Reload</span>
+        </div>
+        <table class="min-w-full text-sm border">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border px-3 py-2">Speaker</th>
+              <th class="border px-3 py-2">Words</th>
+              <th class="border px-3 py-2">Fillers</th>
+              <th class="border px-3 py-2">Filler %</th>
+              <th class="border px-3 py-2">Avg Compliance Score</th>
+              <th class="border px-3 py-2">Total Meetings</th>
+              <th class="border px-3 py-2">In Range</th>
+            </tr>
+          </thead>
+          <tbody id="fillerBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Trend -->
+      <div class="card col-span-full">
+        <div class="flex justify-between mb-2">
+          <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
+          <span class="reload-btn" onclick="reload('trend')">↻ Reload</span>
+        </div>
+        <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+
+      <!-- Lifecycle -->
+      <div class="card col-span-full">
+        <div class="flex justify-between mb-2">
+          <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
+          <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
+        </div>
+        <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+    </div>
   </div>
-
-  <h1 class="text-4xl font-bold text-center text-gray-800">🔥 Fireflies Speaker Dashboard</h1>
-  <div id="summaryBox" class="text-center text-sm text-gray-600 mt-1"></div>
-
-  <!-- Date Filter -->
-  <form id="filterForm" class="flex flex-wrap justify-center gap-6 items-end">
-    <label class="flex flex-col">
-      <span>Start Date</span>
-      <input type="date" id="startDate" class="border px-3 py-1 rounded"/>
-    </label>
-    <label class="flex flex-col">
-      <span>End Date</span>
-      <input type="date" id="endDate" class="border px-3 py-1 rounded"/>
-    </label>
-    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded">Apply</button>
-  </form>
-
-  <!-- Charts Row -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Compliance Comparison -->
-    <div class="card">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Compliance: Total vs Filtered</h3>
-        <span class="reload-btn" onclick="reload('combined')">↻ Reload</span>
-      </div>
-      <canvas id="combinedComplianceChart"></canvas>
-    </div>
-
-    <!-- Stacked Words -->
-    <div class="card">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Stacked Words vs Fillers</h3>
-        <span class="reload-btn" onclick="reload('stacked')">↻ Reload</span>
-      </div>
-      <canvas id="stackedChart"></canvas>
-    </div>
-
-    <!-- Filler Word Table -->
-    <div class="card col-span-full overflow-x-auto">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Filler Word %</h3>
-        <span class="reload-btn" onclick="reload('filler')">↻ Reload</span>
-      </div>
-      <table class="min-w-full text-sm border">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border px-3 py-2">Speaker</th>
-            <th class="border px-3 py-2">Words</th>
-            <th class="border px-3 py-2">Fillers</th>
-            <th class="border px-3 py-2">Filler %</th>
-            <th class="border px-3 py-2">Avg Compliance Score</th>
-            <th class="border px-3 py-2">Total Meetings</th>
-            <th class="border px-3 py-2">In Range</th>
-          </tr>
-        </thead>
-        <tbody id="fillerBody"></tbody>
-      </table>
-    </div>
-
-    <!-- Word Trends -->
-    <div class="card col-span-full">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
-        <span class="reload-btn" onclick="reload('trend')">↻ Reload</span>
-      </div>
-      <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    </div>
-
-    <!-- Meeting-Specific Cards -->
-    <div class="card col-span-full">
-      <div class="flex justify-between mb-2">
-        <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
-        <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
-      </div>
-      <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    </div>
-  </div>
-
 <script>
   const endpoints = {
     combined: 'https://n8n.sapidblue.in/webhook/t_data',
