@@ -66,7 +66,6 @@
     </div>
   </div>
 
-  <!-- Keep your original <script> tag here -->
   <script>
     const uploadURL = "https://n8n.sapidblue.in/webhook/addtoskiplist";
     const checkURL = "https://n8n.sapidblue.in/webhook/dataskiplist";
@@ -77,28 +76,26 @@
       document.getElementById('checkTab').style.display = tab === 'check' ? 'block' : 'none';
     }
 
-async function submitUpload() {
-  const input = document.getElementById('uploadInput').value.trim();
-  if (!input) return alert("Please enter company names.");
+    async function submitUpload() {
+      const input = document.getElementById('uploadInput').value.trim();
+      if (!input) return alert("Please enter company names.");
+      const companies = input.split('\n').map(x => x.trim()).filter(Boolean);
 
-  const companies = input.split('\n').map(x => x.trim()).filter(Boolean);
+      const res = await fetch(uploadURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companies })
+      });
 
-  const res = await fetch(uploadURL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ companies })
-  });
+      const data = await res.json();
 
-  const data = await res.json();
-
-  if (data.success) {
-    document.getElementById('uploadStatus').innerText = `✅ Successfully added ${companies.length} companies to skip list.`;
-    document.getElementById('uploadInput').value = '';
-  } else {
-    document.getElementById('uploadStatus').innerText = `❌ Failed to add companies to skip list.`;
-  }
-}
-
+      if (Array.isArray(data) && data[0]?.success) {
+        document.getElementById('uploadStatus').innerText = `✅ Successfully added ${companies.length} companies to skip list.`;
+        document.getElementById('uploadInput').value = '';
+      } else {
+        document.getElementById('uploadStatus').innerText = `❌ Failed to add companies to skip list.`;
+      }
+    }
 
     async function submitCheck() {
       const input = document.getElementById('checkInput').value.trim();
