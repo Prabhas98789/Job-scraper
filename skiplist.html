@@ -1,50 +1,72 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-gray-100">
+<html lang="en" class="h-full bg-gradient-to-br from-blue-100 to-white text-gray-800">
 <head>
   <meta charset="UTF-8" />
   <title>Skip List Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      min-height: 100%;
+    }
+  </style>
 </head>
-<body class="p-6">
-  <h1 class="text-3xl font-bold mb-6 text-gray-800">🚫 Skip List Dashboard</h1>
+<body class="h-full min-h-screen flex flex-col p-4 md:p-6">
 
-  <!-- Tab Buttons -->
-  <div class="mb-6 flex gap-4">
-    <button onclick="showTab('add')" class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded shadow">➕ Add to Skip List</button>
-    <button onclick="showTab('check')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded shadow">🔍 Check Skip List</button>
-  </div>
-
-  <!-- Add to Skip List Tab -->
-  <div id="addTab" class="hidden">
-    <h2 class="text-xl font-semibold mb-2 text-green-700">Add Companies to Skip List</h2>
-    <textarea id="uploadInput" class="w-full h-32 p-3 border rounded shadow-sm focus:outline-none focus:ring" placeholder="Paste company names here..."></textarea>
-    <button onclick="submitUpload()" class="mt-4 px-5 py-2 bg-green-500 hover:bg-green-600 text-white rounded font-medium shadow">✅ Add</button>
-    <div id="uploadStatus" class="mt-4 text-green-700 font-medium"></div>
-  </div>
-
-  <!-- Check Skip List Tab -->
-  <div id="checkTab" class="hidden">
-    <h2 class="text-xl font-semibold mb-2 text-blue-700">Check Companies Against Skip List</h2>
-    <textarea id="checkInput" class="w-full h-32 p-3 border rounded shadow-sm focus:outline-none focus:ring" placeholder="Paste company names to check..."></textarea>
-    <div class="flex gap-4 mt-4">
-      <button onclick="submitCheck()" class="px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium shadow">🔎 Check</button>
-      <button onclick="downloadExcel()" class="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded font-medium shadow">⬇️ Download as Excel</button>
+  <div class="w-full max-w-5xl mx-auto space-y-8 flex-grow">
+    <!-- Back to Dashboard -->
+    <div class="flex justify-start">
+      <a href="https://prabhas98789.github.io/Job-scraper/repo.html"
+         class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 transition">
+        ← Back to Dashboard
+      </a>
     </div>
-    <div id="checkStatus" class="mt-4 font-medium text-gray-700"></div>
 
-    <table class="table-auto w-full mt-6 border-collapse border" id="checkTable">
-      <thead>
-        <tr class="bg-gray-200">
-          <th class="border p-2">Company Name</th>
-          <th class="border p-2">Status</th>
-          <th class="border p-2">Action</th>
-        </tr>
-      </thead>
-      <tbody id="checkTableBody"></tbody>
-    </table>
+    <!-- Page Title -->
+    <h1 class="text-3xl font-bold text-gray-900">🚫 Skip List Dashboard</h1>
+
+    <!-- Tab Buttons -->
+    <div class="flex flex-wrap gap-4">
+      <button onclick="showTab('add')" class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded shadow">➕ Add to Skip List</button>
+      <button onclick="showTab('check')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded shadow">🔍 Check Skip List</button>
+    </div>
+
+    <!-- Add Tab -->
+    <div id="addTab" class="hidden">
+      <h2 class="text-xl font-semibold mb-2 text-green-700">Add Companies to Skip List</h2>
+      <textarea id="uploadInput" class="w-full h-32 p-3 border rounded shadow-sm focus:outline-none focus:ring" placeholder="Paste company names here..."></textarea>
+      <button onclick="submitUpload()" class="mt-4 px-5 py-2 bg-green-500 hover:bg-green-600 text-white rounded font-medium shadow">✅ Add</button>
+      <div id="uploadStatus" class="mt-4 text-green-700 font-medium"></div>
+    </div>
+
+    <!-- Check Tab -->
+    <div id="checkTab" class="hidden">
+      <h2 class="text-xl font-semibold mb-2 text-blue-700">Check Companies Against Skip List</h2>
+      <textarea id="checkInput" class="w-full h-32 p-3 border rounded shadow-sm focus:outline-none focus:ring" placeholder="Paste company names to check..."></textarea>
+      <div class="flex flex-wrap gap-4 mt-4">
+        <button onclick="submitCheck()" class="px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium shadow">🔎 Check</button>
+        <button onclick="downloadExcel()" class="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded font-medium shadow">⬇️ Download as Excel</button>
+      </div>
+      <div id="checkStatus" class="mt-4 font-medium text-gray-700"></div>
+
+      <div class="overflow-x-auto mt-6">
+        <table class="table-auto w-full border-collapse border" id="checkTable">
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="border p-2">Company Name</th>
+              <th class="border p-2">Status</th>
+              <th class="border p-2">Action</th>
+            </tr>
+          </thead>
+          <tbody id="checkTableBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
+  <!-- Keep your original <script> tag here -->
   <script>
     const uploadURL = "https://n8n.sapidblue.in/webhook/addtoskiplist";
     const checkURL = "https://n8n.sapidblue.in/webhook/dataskiplist";
@@ -129,7 +151,7 @@
       XLSX.writeFile(workbook, "skip_list_results.xlsx");
     }
 
-    // Default view
+    // Set default tab
     showTab('add');
   </script>
 </body>
