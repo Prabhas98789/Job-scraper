@@ -40,69 +40,16 @@
     <canvas id="combinedComplianceChart"></canvas>
   </div>
 
-  <!-- Stacked Words -->
-  <div class="card">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">Stacked Words vs Fillers</h3>
-      <span class="reload-btn" onclick="reload('stacked')">↻ Reload</span>
-    </div>
-    <canvas id="stackedChart"></canvas>
-  </div>
-
-  <!-- Filler Word Table -->
-  <div class="card col-span-full overflow-x-auto">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">Filler Word %</h3>
-      <span class="reload-btn" onclick="reload('filler')">↻ Reload</span>
-    </div>
-    <table class="min-w-full text-sm border">
-      <thead class="bg-gray-100">
-        <tr>
-          <th class="border px-3 py-2">Speaker</th>
-          <th class="border px-3 py-2">Words</th>
-          <th class="border px-3 py-2">Fillers</th>
-          <th class="border px-3 py-2">Filler %</th>
-          <th class="border px-3 py-2">Avg Compliance Score</th>
-          <th class="border px-3 py-2">Total Meetings</th>
-          <th class="border px-3 py-2">In Range</th>
-        </tr>
-      </thead>
-      <tbody id="fillerBody"></tbody>
-    </table>
-  </div>
-
-  <!-- Word Trends -->
-  <div class="card col-span-full">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">Word Trends (Per Speaker)</h3>
-      <span class="reload-btn" onclick="reload('trend')">↻ Reload</span>
-    </div>
-    <div id="trendContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-  </div>
-
-  <!-- Meeting-Specific Cards -->
-  <div class="card col-span-full">
-    <div class="flex justify-between mb-2">
-      <h3 class="font-semibold">🎯 Meeting-specific Speaker Compliance</h3>
-      <span class="reload-btn" onclick="reload('lifecycle')">↻ Reload</span>
-    </div>
-    <div id="meetingCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-  </div>
+  <!-- Other Cards… -->
 </div>
 
 <script>
   const endpoints = {
     combined: 'https://n8n.sapidblue.in/webhook/t_data',
     filtered: 'https://n8n.sapidblue.in/webhook/compliance-scores',
-    filler: 'https://n8n.sapidblue.in/webhook/fillerpercent',
-    trend: 'https://n8n.sapidblue.in/webhook/word-trend-stats',
-    stacked: 'https://n8n.sapidblue.in/webhook/totalinaregion',
-    lifecycle: 'https://n8n.sapidblue.in/webhook/metings',
   };
 
   let filters = { start: '', end: '' };
-  let speakerMeetingMap = {};
-  let speakerMonthlyMeetingMap = {};
 
   function setDefaultDates(){
     const now = new Date(), prev = new Date();
@@ -113,187 +60,70 @@
   }
 
   function reload(type){
-    switch(type){
-      case 'combined': loadCombined(); break;
-      case 'stacked': loadStacked(); break;
-      case 'filler': loadFiller(); break;
-      case 'trend': loadTrend(); break;
-      case 'lifecycle': loadLifecycle(); break;
-    }
+    if (type === 'combined') loadCombined();
   }
 
-  async function loadLifecycle(){
-    const arr = await fetch(endpoints.lifecycle).then(r => r.json());
-    const container = document.getElementById('meetingCards');
-    const summaryBox = document.getElementById('summaryBox');
-    container.innerHTML = '';
-    summaryBox.textContent = `📊 Showing unique meeting counts based on selected date range (${filters.start} to ${filters.end})`;
+  async function loadCombined() {
+    // Fetch t_data (total avg compliance scores)
+    const totArr = await fetch(endpoints.combined).then(r => r.json());
 
-    speakerMeetingMap = {};
-    speakerMonthlyMeetingMap = {};
-    const startDate = new Date(filters.start);
-    const endDate = new Date(filters.end);
+    // Fetch compliance-scores (filtered)
+    const raw = await fetch(`${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
 
-    arr.forEach(o => {
-      const speakerKey = o.email || o.speaker_name;
-      const rawDate = o.date || o.timestamp || o.created_at || o.updated_at || null;
-      const meetingDate = rawDate ? new Date(rawDate) : null;
-      const inRange = meetingDate && meetingDate >= startDate && meetingDate <= endDate;
-
-      if (!speakerMeetingMap[speakerKey]) speakerMeetingMap[speakerKey] = new Set();
-      speakerMeetingMap[speakerKey].add(o.meeting_id);
-
-      if (inRange) {
-        if (!speakerMonthlyMeetingMap[speakerKey]) speakerMonthlyMeetingMap[speakerKey] = new Set();
-        speakerMonthlyMeetingMap[speakerKey].add(o.meeting_id);
-      }
+    // Deduplicate and validate
+    const seen = new Set();
+    const validFiltered = raw.filter(o => {
+      const key = `${o.meeting_id}||${o.speaker_name}`;
+      if (!o.speaker_name || typeof o.score !== 'number' || seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
 
-    const grouped = {};
-    arr.forEach(o => {
-      if (!grouped[o.meeting_id]) grouped[o.meeting_id] = [];
-      grouped[o.meeting_id].push(o);
+    // Compute filtered avg per speaker
+    const scoreMap = {};
+    validFiltered.forEach(o => {
+      if (!scoreMap[o.speaker_name]) scoreMap[o.speaker_name] = { total: 0, count: 0 };
+      scoreMap[o.speaker_name].total += o.score;
+      scoreMap[o.speaker_name].count += 1;
     });
 
-    for (const [meetingId, speakers] of Object.entries(grouped)) {
-      const outer = document.createElement('div');
-      outer.className = 'card space-y-3';
-      outer.innerHTML = `
-        <div class="flex justify-between items-center">
-          <h4 class="font-bold text-lg text-indigo-600">📌 Meeting ID: ${meetingId}</h4>
-          <a href="https://prabhas98789.github.io/Job-scraper/meet.html?meeting_id=${meetingId}" target="_blank"
-             class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded">View</a>
-        </div>`;
+    const filteredAvgMap = {};
+    Object.entries(scoreMap).forEach(([speaker, { total, count }]) => {
+      filteredAvgMap[speaker] = +(total / count).toFixed(1);
+    });
 
-      speakers.forEach(item => {
-        const speakerKey = item.email || item.speaker_name;
-        const totalMeetings = speakerMeetingMap[speakerKey]?.size || 0;
-        const monthlyMeetings = speakerMonthlyMeetingMap[speakerKey]?.size || 0;
-
-        const speakerCard = document.createElement('div');
-        speakerCard.className = 'border p-3 rounded bg-gray-50';
-        speakerCard.innerHTML = `
-          <div class="font-semibold text-blue-700">${item.speaker_name} (${item.email || 'no email'})</div>
-          <div><strong>Total Unique Meetings:</strong> ${totalMeetings}</div>
-          <div><strong>Meetings in Selected Range:</strong> ${monthlyMeetings}</div>
-          <div><strong>Compliance Score:</strong> ${item.score}</div>
-          <div><strong>Matched Topics:</strong> ${item.matched_topics || 'None'}</div>
-          <div><strong>Missed Topics:</strong> ${item.missed_topics || 'None'}</div>
-          <div><strong>Matched Keywords:</strong> ${item.matched?.length ? item.matched.join(', ') : 'None'}</div>
-          <div><strong>Unmatched Keywords:</strong> ${item.unmatched?.length ? item.unmatched.join(', ') : 'None'}</div>
-        `;
-        outer.appendChild(speakerCard);
-      });
-
-      container.appendChild(outer);
-    }
-  }
-
-async function loadCombined() {
-  // 1. Fetch overall averages (t_data)
-  const totArr = await fetch(endpoints.combined).then(r => r.json());
-  //    [ { speaker_name, avg_compliance_score }, … ]
-
-  // 2. Fetch detailed per‑meeting scores (compliance‑scores)
-  const raw = await fetch(
-    `${endpoints.filtered}?start_date=${filters.start}&end_date=${filters.end}`
-  ).then(r => r.json());
-  //    [ { meeting_id, speaker_name, score, … }, … ]
-
-  // 3. Deduplicate by meeting + speaker
-  const seen = new Set();
-  const deduped = raw.filter(o => {
-    const key = `${o.meeting_id}||${o.speaker_name}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  // 4. Compute filtered average per speaker
-  const sums = {}, counts = {};
-  deduped.forEach(o => {
-    sums[o.speaker_name]   = (sums[o.speaker_name]   || 0) + o.score;
-    counts[o.speaker_name] = (counts[o.speaker_name] || 0) + 1;
-  });
-  const filtMap = {};
-  for (const sp of Object.keys(sums)) {
-    filtMap[sp] = +(sums[sp] / counts[sp]).toFixed(1);
-  }
-
-  // 5. Build unified speaker list
-  const speakers = [
-    ...new Set([
+    // Union of all speakers
+    const allSpeakers = Array.from(new Set([
       ...totArr.map(o => o.speaker_name),
-      ...Object.keys(filtMap)
-    ])
-  ];
+      ...Object.keys(filteredAvgMap)
+    ]));
 
-  // 6. Align data arrays
-  const totalScores    = speakers.map(s => +(
-    totArr.find(o => o.speaker_name === s)?.avg_compliance_score || 0
-  ));
-  const filteredScores = speakers.map(s => filtMap[s] || 0);
+    const totalScores = allSpeakers.map(name =>
+      +(totArr.find(o => o.speaker_name === name)?.avg_compliance_score || 0)
+    );
 
-  // 7. Render the bar chart
-  renderChart(
-    'combinedComplianceChart',
-    'bar',
-    speakers,
-    [ totalScores, filteredScores ],
-    ['Overall Avg (≥3%)', 'Filtered Avg (≥3% & date)'],
-    { max: 100, colors: ['#3B82F6', '#10B981'] }
-  );
-}
+    const filteredScores = allSpeakers.map(name =>
+      filteredAvgMap[name] || 0
+    );
 
-  async function loadStacked(){
-    const arr = await fetch(`${endpoints.stacked}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    renderChart('stackedChart', 'bar', arr.map(o => o.speaker_name), [arr.map(o => +o.total_words), arr.map(o => +o.total_fillers)], ['Total', 'Fillers'], {stacked: true, colors: ['#3B82F6', '#F97316']});
-  }
-
-  async function loadFiller(){
-  const arr = await fetch(`${endpoints.filler}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-  document.getElementById('fillerBody').innerHTML = arr.map(o => {
-    const percent = o.total_words && o.total_words !== "0" ? ((+o.total_fillers / +o.total_words) * 100).toFixed(2) : "0.00";
-    return `<tr>
-      <td class="border px-3 py-1">${o.speaker_name}</td>
-      <td class="border px-3 py-1">${o.total_words}</td>
-      <td class="border px-3 py-1">${o.total_fillers}</td>
-      <td class="border px-3 py-1">${percent}%</td>
-      <td class="border px-3 py-1">${(+o.avg_score).toFixed(1)}</td>
-      <td class="border px-3 py-1">${o.total_meetings || 0}</td>
-      <td class="border px-3 py-1">${o.meetings_in_range || 0}</td>
-    </tr>`;
-  }).join('');
-}
-
-
-  async function loadTrend(){
-    const arr = await fetch(`${endpoints.trend}?start_date=${filters.start}&end_date=${filters.end}`).then(r => r.json());
-    const trendContainer = document.getElementById('trendContainer');
-    trendContainer.innerHTML = '';
-    const bySpeaker = {};
-    arr.forEach(o => {
-      if (!bySpeaker[o.speaker_name]) bySpeaker[o.speaker_name] = [];
-      bySpeaker[o.speaker_name].push({meeting_id: o.meeting_id, total_words: +o.total_words});
-    });
-    Object.entries(bySpeaker).forEach(([speaker, data]) => {
-      const id = 'trend_' + speaker.replace(/\s+/g, '_');
-      const wrapper = document.createElement('div');
-      wrapper.className = 'card';
-      wrapper.innerHTML = `<h4 class="font-semibold mb-2">${speaker}</h4><canvas id="${id}"></canvas>`;
-      trendContainer.appendChild(wrapper);
-      const labels = data.map(d => d.meeting_id);
-      const words = data.map(d => d.total_words);
-      renderChart(id, 'line', labels, [words], ['Words'], {});
-    });
+    renderChart(
+      'combinedComplianceChart',
+      'bar',
+      allSpeakers,
+      [totalScores, filteredScores],
+      ['Overall Avg (≥3%)', 'Filtered Avg (≥3% & date)'],
+      { max: 100, colors: ['#3B82F6', '#10B981'] }
+    );
   }
 
   function renderChart(el, type, labels, datasets, dsLabels, opts){
     const canvas = typeof el === 'string' ? document.getElementById(el) : el;
     const ctx = canvas.getContext('2d');
     if (canvas.chart) canvas.chart.destroy();
+
     const defaultColors = ['#3B82F6', '#10B981', '#F97316', '#EF4444'];
     const colors = opts.colors || defaultColors;
+
     canvas.chart = new Chart(ctx, {
       type,
       data: {
@@ -303,18 +133,24 @@ async function loadCombined() {
           data: d,
           backgroundColor: colors[i % colors.length],
           borderColor: colors[i % colors.length],
-          tension: 0.3,
-          fill: false
+          borderWidth: 1
         }))
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: opts.stacked ? {stacked: true} : {},
-          y: opts.stacked ? {stacked: true, beginAtZero: true} : {beginAtZero: true, max: opts.max || undefined}
+          x: { stacked: opts.stacked || false },
+          y: {
+            stacked: opts.stacked || false,
+            beginAtZero: true,
+            max: opts.max || undefined
+          }
         },
-        plugins: {legend: {position: 'bottom'}}
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { mode: 'index', intersect: false }
+        }
       }
     });
   }
@@ -323,13 +159,11 @@ async function loadCombined() {
     e.preventDefault();
     filters.start = document.getElementById('startDate').value;
     filters.end = document.getElementById('endDate').value;
-    ['combined', 'stacked', 'trend'].forEach(reload);
-    loadLifecycle().then(loadFiller);
+    reload('combined');
   });
 
   setDefaultDates();
-  ['combined', 'stacked', 'trend'].forEach(reload);
-  loadLifecycle().then(loadFiller);
+  reload('combined');
 </script>
 </body>
 </html>
