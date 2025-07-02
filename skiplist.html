@@ -149,11 +149,23 @@
         return;
       }
 
-      const worksheet = XLSX.utils.json_to_sheet(lastCheckedResults);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "SkipListCheck");
+      const filtered = lastCheckedResults
+        .filter(item => item.exists === false)
+        .map(item => ({
+          "Company Name": item.name,
+          "Status": "Not in Skip List"
+        }));
 
-      XLSX.writeFile(workbook, "skip_list_results.xlsx");
+      if (filtered.length === 0) {
+        alert("✅ All companies are in the skip list. Nothing to download.");
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(filtered);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "NotInSkipList");
+
+      XLSX.writeFile(workbook, "not_in_skip_list.xlsx");
     }
 
     // Set default tab
