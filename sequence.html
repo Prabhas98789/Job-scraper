@@ -53,7 +53,9 @@
           </div>
           <div class="mb-3">
             <label class="block text-sm font-medium">LinkedIn URL</label>
-            <input type="url" x-model="form.url" class="w-full border px-2 py-1 rounded" required pattern="https?://(www\.)?linkedin\.com/.*" title="Only LinkedIn URLs are allowed">
+            <input type="url" x-model="form.url" class="w-full border px-2 py-1 rounded" required
+              pattern="https?://(www\.)?linkedin\.com/.*"
+              title="Only LinkedIn URLs are allowed">
           </div>
           <div class="mb-3">
             <label class="block text-sm font-medium">Count</label>
@@ -72,12 +74,12 @@
       <table class="w-full text-left text-sm">
         <thead class="bg-gray-200">
           <tr>
-            <th class="p-2 whitespace-nowrap">Name</th>
-            <th class="p-2 whitespace-nowrap">URL</th>
-            <th class="p-2 whitespace-nowrap">Count</th>
-            <th class="p-2 whitespace-nowrap">Status</th>
-            <th class="p-2 whitespace-nowrap">Created</th>
-            <th class="p-2 whitespace-nowrap">Action</th>
+            <th class="p-2">Name</th>
+            <th class="p-2">URL</th>
+            <th class="p-2">Count</th>
+            <th class="p-2">Status</th>
+            <th class="p-2">Created</th>
+            <th class="p-2">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -100,7 +102,7 @@
                   </template>
                   <template x-if="seq.status === 'load...' || seq.status === 'loading'">
                     <button @click="runJob(seq.id)"
-                      class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1">
+                      class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1">
                       ▶️ <span>Run</span>
                     </button>
                   </template>
@@ -145,7 +147,7 @@
                 name: data.name,
                 url: data.url,
                 count: data.count,
-                status: data.status || 'load...',
+                status: data.status === 'loading' ? 'load...' : (data.status || 'load...'),
                 created_at: data.created_at
               });
               this.form = { name: '', url: '', count: 10 };
@@ -164,7 +166,7 @@
               if (Array.isArray(data)) {
                 this.sequences = data.map(seq => ({
                   ...seq,
-                  status: seq.status === 'loading' ? 'load...' : seq.status
+                  status: seq.status === 'loading' ? 'load...' : (seq.status || 'load...')
                 }));
               }
             })
@@ -179,9 +181,7 @@
           })
           .then(() => {
             const seq = this.sequences.find(s => s.id === id);
-            if (seq) {
-              seq.status = 'running';
-            }
+            if (seq) seq.status = 'running';
           })
           .catch(() => alert('Failed to trigger job.'));
         },
