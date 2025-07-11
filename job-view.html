@@ -60,22 +60,23 @@
 
         fetchJob() {
           const urlParams = new URLSearchParams(window.location.search);
-          this.jobId = urlParams.get('internal_id'); // using internal_id
+          this.jobId = urlParams.get('id'); // ✅ now using id
           this.sequenceId = urlParams.get('sequence_id');
+
           if (!this.jobId || !this.sequenceId) {
-            alert('Job internal_id or sequence_id missing in URL');
+            alert('Job id or sequence_id missing in URL');
             return;
           }
 
           fetch('https://n8n.sapidblue.in/webhook/view-job', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ internal_id: this.jobId, sequence_id: this.sequenceId })
+            body: JSON.stringify({ id: this.jobId, sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(data => {
             const jobData = Array.isArray(data) ? data[0] : data;
-            if (jobData && jobData.internal_id) {
+            if (jobData && jobData.id) {
               this.job = jobData;
             } else {
               alert('Job not found');
@@ -88,7 +89,7 @@
           fetch('https://n8n.sapidblue.in/webhook/Delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ internal_id: this.jobId, sequence_id: this.sequenceId })
+            body: JSON.stringify({ id: this.jobId, sequence_id: this.sequenceId })
           })
           .then(res => res.json())
           .then(resp => {
