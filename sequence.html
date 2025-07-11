@@ -190,7 +190,7 @@
           fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sequence_id: id })
+            body: JSON.stringify({ id })  // ✅ fixed from sequence_id to id
           })
           .then(() => {
             window.location.href = `job-detail.html?id=${id}`;
