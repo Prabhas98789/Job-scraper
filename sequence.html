@@ -27,7 +27,6 @@
 <body class="h-full min-h-screen flex flex-col p-4 md:p-6" x-data="jobSequences()" x-init="init()">
 
   <div class="w-full max-w-6xl mx-auto space-y-6 flex-grow">
-    <!-- Back Button -->
     <div>
       <a href="https://prabhas98789.github.io/Job-scraper/repo.html"
          class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 transition">
@@ -101,7 +100,7 @@
                     <a href="#" @click.prevent="viewJob(seq.id)" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">View</a>
                   </template>
                   <template x-if="seq.status === 'load...' || seq.status === 'loading'">
-                    <button @click="runJob(seq.id)"
+                    <button @click="runJob(seq.id, seq.count)"
                       class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1">
                       ▶️ <span>Run</span>
                     </button>
@@ -173,11 +172,11 @@
             .catch(() => alert('Failed to fetch sequences.'));
         },
 
-        runJob(id) {
+        runJob(id, count) {
           fetch('https://n8n.sapidblue.in/webhook/fetch-job-postings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
+            body: JSON.stringify({ id, count })
           })
           .then(() => {
             const seq = this.sequences.find(s => s.id === id);
@@ -190,7 +189,7 @@
           fetch('https://n8n.sapidblue.in/webhook/job-sequence-fetch-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })  // ✅ fixed from sequence_id to id
+            body: JSON.stringify({ id })
           })
           .then(() => {
             window.location.href = `job-detail.html?id=${id}`;
